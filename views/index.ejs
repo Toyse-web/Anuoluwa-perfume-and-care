@@ -1,0 +1,36 @@
+<%- include("partials/header") %>
+
+<div class="container">
+  <% categories.forEach(cat => { %>
+    <section class="category-block">
+      <h2><%= cat.name %></h2>
+      <hr class="category-line">
+
+      <div class="product-grid">
+        <% if (productsByCategory[cat.id]) { %>
+          <% productsByCategory[cat.id].forEach(p => { %>
+            <article class="product-card">
+              <div class="product-image">
+                <img src="/images/<%= p.image_url %>" alt="<%= p.name %>">
+              </div>
+              <div class="product-info">
+                <h3><%= p.name %></h3>
+                <p class="excerpt"><%= p.description %></p>
+                <div class="price">₦<%= p.price %></div>
+
+                <!-- Add to Cart form -->
+                <form action="/cart/add/<%= p.id %>" method="POST">
+                  <button type="submit" class="btn add-to-cart-btn">Add to Cart</button>
+                </form>
+              </div>
+            </article>
+          <% }) %>
+        <% } else { %>
+          <p class="muted">No products yet in this category.</p>
+        <% } %>
+      </div>
+    </section>
+  <% }) %>
+</div>
+
+<%- include("partials/footer") %>

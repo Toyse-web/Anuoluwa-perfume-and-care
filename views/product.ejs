@@ -1,0 +1,27 @@
+<%- include("partials/header") %>
+
+<% for (const category of Object.keys(productsByCategory)) { %>
+  <div class="category-section">
+    <h2><%= category %></h2>
+    <hr>
+
+    <div class="product-grid">
+      <% productsByCategory[category].forEach(product => { %>
+        <div class="product-card">
+          <img src="<%= product.image_url %>" alt="<%= product.name %>">
+
+          <h3><%= product.name %></h3>
+          <p><%= product.excerpt %></p>
+          <p><strong>$<%= product.price %></strong></p>
+
+          <!-- Add to Cart form -->
+           <form action="/cart/add/<%= product.id %>" method="POST">
+            <button type="submit" class="add-to-cart-btn">Add to Cart</button>
+           </form>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+<% } %>
+
+<%- include("partials/footer") %>

@@ -1,0 +1,48 @@
+<%- include("partials/header") %>
+
+<div class="container">
+  <h2>Your Cart</h2>
+  <hr class="category-line">
+
+  <% if (cart.length > 0) { %>
+    <table class="cart-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Price</th>
+          <th>Qty</th>
+          <th>Total</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% cart.forEach(item => { %>
+          <tr>
+            <td>
+              <img src="/images/<%= item.image_url %>" alt="<%= item.name %>">
+              <div><%= item.name %></div>
+            </td>
+            <td>₦<%= item.price %></td>
+            <td><%= item.quantity %></td>
+            <td>₦<%= item.price * item.quantity %></td>
+            <td>
+              <form action="/cart/remove/<%= item.id %>" method="POST">
+                <button type="submit" class="btn">Remove</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+    <div class="cart-actions">
+      <form action="/cart/clear" method="POST">
+        <button type="submit" class="btn">Clear Cart</button>
+      </form>
+    </div>
+  <% } else { %>
+    <p>Your cart is empty.</p>
+  <% } %>
+</div>
+
+<%- include("partials/footer") %>
