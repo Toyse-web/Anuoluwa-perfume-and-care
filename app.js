@@ -162,19 +162,16 @@ app.post("/cart/remove/:id", (req, res) => {
     res.redirect("/cart");
 });
 
+app.post("/cart/clear", (req, res) => {
+    saveCart(req, res, []); //empty cart
+    res.redirect("/cart");
+});
+
 // View cart
 app.get("/cart", (req, res) => {
     const cart = getCart(req);
     const total = cart.reduce((sum, p) => sum + p.price * p.qty, 0);
     res.render("cart", {cart, total});
-});
-
-// Remove item
-app.post("/cart/remove/:id", (req, res) => {
-   let cart = getCart(req);
-   cart = cart.filter(p => p.id != req.params.id);
-   saveCart(req, res, cart);
-    res.redirect("/cart");
 });
 
 const PORT = process.env.PORT || 3000;

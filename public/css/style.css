@@ -193,7 +193,13 @@ body {
     background: #555;
 }
 
+.cart-container {
+    width: 100%;
+    overflow-x: auto; /* Enable horizontal scroll on small screens */
+}
+
 .cart-table {
+    min-width: 600px; /* Prevents squashing too much */
     width: 100%;
     border-collapse: collapse;
     margin: 2rem 0;
@@ -206,6 +212,7 @@ body {
 .cart-table th,
 .cart-table td {
     padding: 1rem;
+    border-bottom: 1px solid #ddd;
     text-align: center;
 }
 
@@ -349,5 +356,19 @@ body {
 
     .product-card img {
         height: 150px;
+    }
+
+    /* Make inputs + buttons smaller on mobile */
+    .cart-table {
+        font-size: 0.9rem;
+    }
+
+    .cart-table td input[type="number"] {
+        width: 60px;
+    }
+
+    .btn {
+        padding: 4px 8px;
+        font-size: 0.85rem;
     }
 }

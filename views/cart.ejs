@@ -7,6 +7,7 @@
   <% if (cart.length > 0) { 
        let subtotal = 0;
   %>
+  <div class="cart-container">
     <table class="cart-table">
       <thead>
         <tr>
@@ -32,9 +33,9 @@
             </td>
             <td>₦<%= price.toFixed(2) %></td>
             <td>
-              <form action="/cart/update/<%= item.id %>" method="POST" style="display:inline-block;">
-                <input type="number" name="quantity" value="<%= qty %>" min="1" style="width:72px;padding:6px;border-radius:6px;border:1px solid #ddd;">
-                <button type="submit" class="btn" style="margin-left:6px">Update</button>
+              <form action="/cart/update/<%= item.id %>" method="POST" class="cart-update-form">
+                <input type="number" name="quantity" value="<%= qty %>" min="1" class="qty-input">
+                <button type="submit" class="btn update-btn">Update</button>
               </form>
             </td>
             <td>₦<%= itemTotal.toFixed(2) %></td>
@@ -47,6 +48,7 @@
         <% }) %>
       </tbody>
     </table>
+  </div>
 
     <div class="cart-summary" style="text-align:right;margin-top:1rem;">
       <h3>Subtotal: ₦<%= subtotal.toFixed(2) %></h3>
