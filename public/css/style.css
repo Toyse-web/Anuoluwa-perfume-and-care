@@ -251,6 +251,14 @@ body {
     background: #e84141;
 }
 
+.cart-summary {
+    text-align: right;
+    margin-top: 1rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #222;
+}
+
 .cart-actions {
     display: flex;
     justify-content: flex-end;

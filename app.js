@@ -19,6 +19,7 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 // Session middleware
@@ -28,16 +29,30 @@ app.use(session({
     saveUninitialized: true
 }));
 
+function normalizeCart(cartArray = []) {
+    return cartArray.map(item => ({
+        id: Number(item.id),
+        name: item.name,
+        price: Number(item.price) || 0,
+        image_url: item.image_url || item.image || item.imageUrl || '',
+        quantity: Number(item.quantity ?? item.qty ?? 1)
+    }));
+}
+
 // function to get cart from session or cookies
 function getCart(req) {
-    if (req.session.cart) return req.session.cart;
+    if (req.session && Array.isArray(req.session.cart)) {
+        return normalizeCart(req.session.cart);
+    }
     
     // If no session, check cookie
-    if (req.cookies.cart) {
+    if (req.cookies && req.cookies.cart) {
         try {
             const parsed = JSON.parse(req.cookies.cart);
-            req.session.cart = parsed; //restore into session
-            return parsed;
+            const normalized = normalizeCart(parsed);
+            // restore into session so subsequent request use session
+            if (req.session) req.session.cart = normalized; //restore into session
+            return normalized;
         } catch (e) {
             return [];
         }
@@ -47,11 +62,12 @@ function getCart(req) {
 
 // Save cart to both session and cookie
 function saveCart(req, res, cart) {
-    req.session.cart = cart;
-    res.cookie("cart", JSON.stringify(cart), {
-        maxAge: 7*24*60*60*1000, // 7 days
+    const normalized = normalizeCart(cart);
+    if (req.session) req.session.cart = normalized;
+    res.cookie("cart", JSON.stringify(normalized), {
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         httpOnly: true, //Protect from JS access
-        secure: false, //set to true when using HTTPS
+        secure: process.env.NODE_ENV === "production",
     });
 }
 
@@ -95,23 +111,53 @@ app.get("/product/:id", async (req, res) => {
 });
 
 app.post("/cart/add/:id", async (req, res) => {
-    const productId = req.params.id;
+    const productId = Number(req.params.id);
+    try {
+        const {rows} = await db.query("SELECT id, name, price, image_url FROM products WHERE id = $1",
+            [productId]
+        );
+        if (!rows[0]) return res.status(404).send("Product not found");
 
-    // Get product details from DB
-    const { rows } = await db.query("SELECT * FROM products WHERE id = $1", [productId]);
-    if (rows.length === 0) return res.status(404).send("Product not found");
+        const prod = rows[0];
+        const product = {
+            id: Number(prod.id),
+            name: prod.name,
+            price: Number(prod.price) || 0,
+            image_url: prod.image_url
+        };
 
-    const product = rows[0];
-    let cart = getCart(req);
+        let cart = getCart(req);
+        const existing = cart.find(i => i.id === product.id);
 
-    // Check if product already in cart
-    const existing = cart.find(p => p.id === product.id);
-    if (existing) {
-        existing.qty += 1;
-    } else {
-        cart.push({...product, qty: 1});
+        if (existing) {
+            existing.quantity = Number(existing.quantity) + 1;
+        } else {
+            cart.push({...product, quantity: 1});
+        } 
+        saveCart(req, res, cart);
+        return res.redirect("/cart");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
     }
+});
 
+app.post("/cart/update/:id", (req, res) => {
+    const productId = Number(req.params.id);
+    const newQty = Number(req.body.quantity) || 0;
+
+    let cart = getCart(req);
+    cart = cart.map(item => item.id === productId ? {...item, quantity: newQty} : item)
+        .filter(item => item.quantity > 0); //remove if qty 0
+
+        saveCart(req, res, cart);
+        res.redirect("/cart");
+});
+
+app.post("/cart/remove/:id", (req, res) => {
+    const id = Number(req.params.id);
+    let cart = getCart(req);
+    cart = cart.filter(i => i.id !== id);
     saveCart(req, res, cart);
     res.redirect("/cart");
 });
