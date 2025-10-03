@@ -12,12 +12,36 @@
  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
  <script>
     window.addEventListener("load", () => {
-        // Fire confetti once
+        // Burst confetti from left
         confetti({
-            particleCount: 200,
-            spread: 90,
-            origin: {y: 0.6}
+            particleCount: 150,
+            angle: 60,
+            spread: 55,
+            origin: {x: 0}
         });
+
+        // Burst from right
+        confetti({
+            particleCount: 150,
+            angle: 150,
+            spread: 55,
+            origin: {x: 1}
+        });
+
+        // Continuous fall for 3 seconds
+        const duration = 3 * 1000; //3 seconds
+        const end = Date.now() + duration;
+
+        (function frame() {
+            confetti({
+                particleCount: 5,
+                spread: 70,
+                origin: {x: Math.random(), y: 0}
+            });
+            if (Date.now() < end) {
+                requestAnimationFrame(frame);
+            }
+        })();
     });
  </script>
 
