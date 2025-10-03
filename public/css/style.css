@@ -284,6 +284,26 @@ body {
     background: #9c4ad6;
 }
 
+.cart-update-form {
+    display:  flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.qty-input {
+    width: 72px;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    text-align: center;
+}
+
+.update-btn {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+}
+
 .excerpt {
     margin: 0.25rem 0;
     color: var(--muted);
@@ -365,6 +385,22 @@ body {
 
     .cart-table td input[type="number"] {
         width: 60px;
+    }
+
+    .cart-update-form {
+        flex-direction: column; /* stack input and button */
+        gap: 4px;
+    }
+
+    .qty-input {
+        width: 60px;
+        font-size: 0.85rem;
+    }
+
+    .update-btn {
+        width: 100%;
+        font-size: 0.85rem;
+        padding: 5px;
     }
 
     .btn {

@@ -174,5 +174,56 @@ app.get("/cart", (req, res) => {
     res.render("cart", {cart, total});
 });
 
+// View checkout
+app.get("/checkout", (req, res) => {
+    const cart = req.session.cart || [];
+    res.render("checkout", {cart});
+});
+
+app.post("/checkout", (req, res) => {
+    const cart = req.session.cart || [];
+    const {
+        fullName, 
+        email, 
+        phone, 
+        address, 
+        city, 
+        state, 
+        postalCode, 
+        paymentMethod
+    } = req.body;
+
+    if (cart.length === 0) {
+        return res.redirect("/cart");
+    }
+
+    // Calculate totals
+    let subtotal = 0;
+    cart.forEach(item => {
+        subtotal += (Number(item.price) || 0) * (Number(item.quantity) || 0);
+    });
+    const shipping = 1000;
+    const total = subtotal + shipping;
+
+    // Save order (for now, just log or save in JSON file)
+    const order = {
+        customer: {fullName, email, phone, address, city, state, postalCode},
+        paymentMethod,
+        items: cart,
+        subtotal,
+        shipping,
+        total,
+        date: new Date()
+    };
+
+    console.log("New Order:", order);
+    // TODO: save order to JSON/DB
+
+    // Clear cart after order
+    req.session.cart = [];
+
+    res.render("order-seccess", { order });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on localhost${PORT}`));
