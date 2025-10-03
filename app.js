@@ -222,7 +222,11 @@ app.post("/checkout", (req, res) => {
     // Clear cart after order
     req.session.cart = [];
 
-    res.render("order-seccess", { order });
+    res.render("order-success", { order });
+});
+
+app.get("/order-success", (req, res) => {
+    res.render("order-success");
 });
 
 const PORT = process.env.PORT || 3000;
