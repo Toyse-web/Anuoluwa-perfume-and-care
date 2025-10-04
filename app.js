@@ -1,19 +1,27 @@
+require("dotenv").config();
 const express = require("express");
 const path = require("path");
 const pg = require("pg");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
+const PgSession = require("connect-pg-simple")(session);
 
 const app = express();
 
-const db = new pg.Client({
-    user: "postgres",
-    host: "localhost",
-    database: "Anuoluwa-Store",
-    password: "Jeanie1234*",
-    port: 5432,
+const { Pool } = pg;
+
+// Env vars 
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL || "postgres://postgres:Jeanie1234*@localhost:5432/Anuoluwa-Store"
 });
-db.connect();
+
+// test connection
+pool.connect().then(client => {
+    client.release();
+    console.log("Postgres pool connected");
+}).catch(err => {
+    console.error("Postgres pool connection error", err);
+});
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -24,7 +32,11 @@ app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 // Session middleware
 app.use(session({
-    secret: "secretkey123",
+    store: new PgSession({
+        pool: pool,
+        tableName: "session"
+    }),
+    secret: process.env.SESSION_SECRET || "dev-secret-change-me",
     resave: false,
     saveUninitialized: true
 }));
@@ -68,16 +80,17 @@ function saveCart(req, res, cart) {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         httpOnly: true, //Protect from JS access
         secure: process.env.NODE_ENV === "production",
+        sameSite: "lax" //default for commerce flows
     });
 }
 
 app.get("/", async(req, res) => {
     try {
         // Fetch categories
-        const categoriesResult = await db.query("SELECT * FROM categories ORDER BY id");
+        const categoriesResult = await pool.query("SELECT * FROM categories ORDER BY id");
 
         // Fetch products grouped be category
-        const productResult = await db.query("SELECT * FROM products ORDER BY category_id");
+        const productResult = await pool.query("SELECT * FROM products ORDER BY category_id");
 
         // Organize into {category_id: [products]}
         const groupedProducts = {};
@@ -100,7 +113,7 @@ app.get("/", async(req, res) => {
 
 app.get("/product/:id", async (req, res) => {
    try {
-    const { rows } = await DOMQuad.query("SELECT * FROM products WHERE id = $1", [req.params.id]);
+    const { rows } = await pool.query("SELECT * FROM products WHERE id = $1", [req.params.id]);
     if (rows.length === 0) return res.status(404).send("Product not found");
 
     res.render("product", {product: rows[0]});
@@ -113,7 +126,7 @@ app.get("/product/:id", async (req, res) => {
 app.post("/cart/add/:id", async (req, res) => {
     const productId = Number(req.params.id);
     try {
-        const {rows} = await db.query("SELECT id, name, price, image_url FROM products WHERE id = $1",
+        const {rows} = await pool.query("SELECT id, name, price, image_url FROM products WHERE id = $1",
             [productId]
         );
         if (!rows[0]) return res.status(404).send("Product not found");
@@ -217,7 +230,7 @@ app.post("/checkout", (req, res) => {
     };
 
     console.log("New Order:", order);
-    // TODO: save order to JSON/DB
+    // TODO: save order to JSON/pool
 
     // Clear cart after order
     req.session.cart = [];
