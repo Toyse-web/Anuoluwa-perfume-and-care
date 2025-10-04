@@ -10,9 +10,9 @@ const app = express();
 
 const { Pool } = pg;
 
-// Env vars 
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || "postgres://postgres:Jeanie1234*@localhost:5432/Anuoluwa-Store"
+    connectionString: process.env.DATABASE_URL || "postgres://postgres:Jeanie1234*@localhost:5432/Anuoluwa-Store",
+    ssl: false
 });
 
 // test connection
@@ -23,6 +23,23 @@ pool.connect().then(client => {
     console.error("Postgres pool connection error", err);
 });
 
+// Create session table
+async function createSessionTable() {
+    try {
+        await pool.query(`CREATE TABLE IF NOT EXISTS session (
+            sid VARCHAR PRIMARY KEY,
+            sess JSON NOT NULL,
+            expire TIMESTAMP(6) NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS IDX_session_expire ON session(expire);
+            `);
+            console.log("Session table ready");
+    } catch (err) {
+        console.error("Error creating session table", err);
+    }
+}
+createSessionTable();
+
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
@@ -30,15 +47,23 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
+
 // Session middleware
 app.use(session({
     store: new PgSession({
         pool: pool,
-        tableName: "session"
+        tableName: "session",
+        createTableIfMissing: true
     }),
-    secret: process.env.SESSION_SECRET || "dev-secret-change-me",
+    secret: process.env.SESSION_SECRET || "my-secret-key",
     resave: false,
-    saveUninitialized: true
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        httpOnly: true,
+        sameSite: "lax"
+    }
 }));
 
 function normalizeCart(cartArray = []) {
@@ -183,7 +208,7 @@ app.post("/cart/clear", (req, res) => {
 // View cart
 app.get("/cart", (req, res) => {
     const cart = getCart(req);
-    const total = cart.reduce((sum, p) => sum + p.price * p.qty, 0);
+    const total = cart.reduce((sum, p) => sum + (p.price * p.quantity), 0);
     res.render("cart", {cart, total});
 });
 
@@ -242,5 +267,26 @@ app.get("/order-success", (req, res) => {
     res.render("order-success");
 });
 
+// 404 error
+app.use((req, res) => {
+    res.status(404).render("error", {
+        message: "Page not found",
+        error: null // pass error as null;
+    })
+});
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error("=== ERROR DETAILS ===");
+    console.error("Error message:", err.message);
+    console.error(err.stack);
+    console.error("=== END ERROR ===");
+    res.status(500).render('error', { 
+        message: 'Something went wrong!',
+        error: process.env.NODE_ENV === 'production' ? null : err
+    });
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on localhost${PORT}`));
+app.listen(PORT, "0.0.0.0", () => { // The 0.0.0.0 is for render
+    console.log(`Server running on localhost${PORT}`)
+});
