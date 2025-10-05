@@ -67,23 +67,23 @@ async function initializeDatabase() {
 // The exact categories and products
 async function exactData() {
     try {
-        // Check if categories already exist
-        const categoriesCount = await pool.query("SELECT COUNT(*) FROM categories");
-        if (parseInt(categoriesCount.rows[0].count) === 0) {
+        // First clear any existing data (but keep the tables)
+        await pool.query("DELETE FROM products");
+        await pool.query("DELETE FROM categories");
+
+        // Reset the sequence IDs to start from 1
+        await pool.query("ALTER SEQUENCE categories_id_seq RESTART WITH 1");
+        await pool.query("ALTER SEQUENCE products_id_seq RESTART WITH 1");
+        
             console.log("Adding categories...");
             await pool.query(`
                 INSERT INTO categories (id, name, slug) VALUES
                 (1, 'Perfume', 'perfume'),
                 (2, 'Body Cream', 'body-cream'),
                 (3, 'Hair Cream', 'hair-cream')
-                ON CONFLICT (id) DO NOTHING;
             `);
             console.log("Categories added");
-        }
 
-        // Check if product already exist
-        const productsCount = await pool.query("SELECT COUNT(*) FROM products");
-        if (parseInt(productsCount.rows[0].count) === 0) {
             console.log("Adding products...");
             await pool.query(`
                 INSERT INTO products (id, name, description, price, image_url, category_id) VALUES
@@ -91,10 +91,9 @@ async function exactData() {
                 (2, 'Shea Butter', 'Smooth body cream', 3500.00, 'body1.png', 2),
                 (3, 'Hair Cream', 'Nourishing hair treatment', 3000.00, 'hair1.jpg', 3),
                 (4, 'Element', 'Fresh modern scent', 1800.00, 'perfume2.jpg', 1)
-                ON CONFLICT (id) DO NOTHING;
             `);
             console.log("Products added");
-        }
+
         console.log("Exact database setup complete!");
     } catch(err) {
         console.error("Error adding data:", err);
