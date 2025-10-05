@@ -15,100 +15,91 @@ const pool = new Pool({
     ssl: false
 });
 
-// Test connection and setup tables
+// Create table for production
 async function initializeDatabase() {
     try {
-        // Test connection
         const client = await pool.connect();
         console.log("Postgres pool connected");
         client.release();
 
-        // Create session table
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS session (
-                sid VARCHAR PRIMARY KEY,
-                sess JSON NOT NULL,
-                expire TIMESTAMP(6) NOT NULL
-            );
-        `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS IDX_session_expire ON session(expire);
-        `);
-        console.log("Session table ready");
-
-        // Create categories table
+        // Create categories table (exact same structure as local)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS categories (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                description TEXT
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            slug (VARCHAR(255)
             );
         `);
         console.log("Categories table ready");
 
-        // Create products table
+        // Create products table (same structure)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS products (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                description TEXT,
-                price DECIMAL(10,2) NOT NULL,
-                image_url VARCHAR(500),
-                category_id INTEGER
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            price DECIMAL(10, 2) NOT NULL,
+            image_url TEXT,
+            category_id INTEGER,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
         `);
         console.log("Products table ready");
 
-        // Add sample data if tables are empty
-        await addSampleData();
-        
+        // Session table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS session (
+            sid VARCHAR PRIMARY KEY,
+            sess JSON NOT NULL,
+            expire TIMESTAMP(6) NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS IDX_session_expire ON session(expire);
+        `);
+        console.log("Session table ready");
+
+        // The exact data
+        await exactData();
     } catch (err) {
         console.error("Database initialization error:", err);
     }
 }
 
-// Add sample data
-async function addSampleData() {
+// The exact categories and products
+async function exactData() {
     try {
         // Check if categories already exist
-        const categoriesResult = await pool.query("SELECT COUNT(*) FROM categories");
-        const categoryCount = parseInt(categoriesResult.rows[0].count);
-        
-        if (categoryCount === 0) {
-            console.log("Adding sample categories...");
+        const categoriesCount = await pool.query("SELECT COUNT(*) FROM categories");
+        if (parseInt(categoriesCount.rows[0].count) === 0) {
+            console.log("Adding categories...");
             await pool.query(`
-                INSERT INTO categories (name, description) VALUES 
-                ('Perfumes', 'Luxury fragrances for men and women'),
-                ('Body Care', 'Body lotions, creams and oils'),
-                ('Hair Care', 'Shampoos, conditioners and treatments');
+                INSERT INTO categories (id, name, slug) VALUES
+                (1, 'Perfume', 'perfume'),
+                (2, 'Body Cream', 'body-cream'),
+                (3, 'Hair Cream', 'hair-cream')
+                ON CONFLICT (id) DO NOTHING;
             `);
-            console.log("Sample categories added");
+            console.log("Categories added");
         }
 
-        // Check if products already exist
-        const productsResult = await pool.query("SELECT COUNT(*) FROM products");
-        const productCount = parseInt(productsResult.rows[0].count);
-        
-        if (productCount === 0) {
-            console.log("Adding sample products...");
+        // Check if product already exist
+        const productsCount = await pool.query("SELECT COUNT(*) FROM products");
+        if (parseInt(productsCount.rows[0].count) === 0) {
+            console.log("Adding products...");
             await pool.query(`
-                INSERT INTO products (name, description, price, image_url, category_id) VALUES 
-                ('Floral Elegance', 'A beautiful floral fragrance', 45.99, '/images/perfume1.jpg', 1),
-                ('Woody Musk', 'Rich woody scent for men', 55.99, '/images/perfume2.jpg', 1),
-                ('Body Lotion', 'Moisturizing body lotion', 25.99, '/images/lotion1.jpg', 2),
-                ('Shampoo', 'Nourishing hair shampoo', 18.99, '/images/shampoo1.jpg', 3);
+                INSERT INTO products (id, name, description, price, image_url, category_id) VALUES
+                (1, 'Chanel No. 5', 'Classic fragrance', 5000.00, 'perfume1.jpg', 1),
+                (2, 'Shea Butter', 'Smooth body cream', 3500.00, 'body1.png', 2),
+                (3, 'Hair Cream', 'Nourishing hair treatment', 3000.00, 'hair1.jpg', 3),
+                (4, 'Element', 'Fresh modern scent', 1800.00, 'perfume2.jpg', 1)
+                ON CONFLICT (id) DO NOTHING;
             `);
-            console.log("Sample products added");
+            console.log("Products added");
         }
-        
-        console.log("Database setup complete!");
-        
-    } catch (err) {
-        console.error("Error adding sample data:", err);
+        console.log("Exact database setup complete!");
+    } catch(err) {
+        console.error("Error adding data:", err);
     }
 }
-
-initializeDatabase();
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));

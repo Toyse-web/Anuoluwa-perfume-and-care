@@ -89,6 +89,9 @@ dist
 # https://nextjs.org/blog/next-9-1#public-directory-support
 # public
 
+#the schema that shows my local database
+get-schema.js
+
 # vuepress build output
 .vuepress/dist
 
