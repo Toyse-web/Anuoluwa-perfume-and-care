@@ -64,39 +64,33 @@ async function initializeDatabase() {
     }
 }
 
-// The exact categories and products
-async function exactData() {
+// Simple version - always use your exact data
+async function addYourExactData() {
     try {
-        // First clear any existing data (but keep the tables)
-        await pool.query("DELETE FROM products");
-        await pool.query("DELETE FROM categories");
-
-        // Reset the sequence IDs to start from 1
-        await pool.query("ALTER SEQUENCE categories_id_seq RESTART WITH 1");
-        await pool.query("ALTER SEQUENCE products_id_seq RESTART WITH 1");
+        // Always clear and recreate with your data
+        await pool.query("TRUNCATE TABLE products, categories RESTART IDENTITY CASCADE");
         
-            console.log("Adding categories...");
-            await pool.query(`
-                INSERT INTO categories (id, name, slug) VALUES
-                (1, 'Perfume', 'perfume'),
-                (2, 'Body Cream', 'body-cream'),
-                (3, 'Hair Cream', 'hair-cream')
-            `);
-            console.log("Categories added");
-
-            console.log("Adding products...");
-            await pool.query(`
-                INSERT INTO products (id, name, description, price, image_url, category_id) VALUES
-                (1, 'Chanel No. 5', 'Classic fragrance', 5000.00, 'perfume1.jpg', 1),
-                (2, 'Shea Butter', 'Smooth body cream', 3500.00, 'body1.png', 2),
-                (3, 'Hair Cream', 'Nourishing hair treatment', 3000.00, 'hair1.jpg', 3),
-                (4, 'Element', 'Fresh modern scent', 1800.00, 'perfume2.jpg', 1)
-            `);
-            console.log("Products added");
-
-        console.log("Exact database setup complete!");
-    } catch(err) {
-        console.error("Error adding data:", err);
+        // Add your categories
+        await pool.query(`
+            INSERT INTO categories (name, slug) VALUES 
+            ('Perfume', 'perfume'),
+            ('Body Cream', 'body-cream'),
+            ('Hair Cream', 'hair-cream');
+        `);
+        
+        // Add your products
+        await pool.query(`
+            INSERT INTO products (name, description, price, image_url, category_id) VALUES 
+            ('Chanel No. 5', 'Classic fragrance', 5000.00, 'perfume1.jpg', 1),
+            ('Shea Butter', 'Smooth body cream', 3500.00, 'body1.png', 2),
+            ('Hair Cream', 'Nourishing hair treatment', 3000.00, 'hair1.jpg', 3),
+            ('Element', 'Fresh modern scent', 1800.00, 'perfume2.jpg', 1);
+        `);
+        
+        console.log("✅ Your exact data loaded: Chanel No. 5, Shea Butter, Hair Cream, Element");
+        
+    } catch (err) {
+        console.error("Error adding your data:", err);
     }
 }
 
@@ -325,6 +319,21 @@ app.post("/checkout", (req, res) => {
 
 app.get("/order-success", (req, res) => {
     res.render("order-success");
+});
+
+// Add this route to see what's currently in your database
+app.get("/current-data", async (req, res) => {
+    try {
+        const categories = await pool.query("SELECT * FROM categories");
+        const products = await pool.query("SELECT * FROM products");
+        
+        res.json({
+            categories: categories.rows,
+            products: products.rows
+        });
+    } catch (err) {
+        res.json({ error: err.message });
+    }
 });
 
 // 404 error
