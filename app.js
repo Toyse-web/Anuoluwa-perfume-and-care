@@ -304,13 +304,22 @@ app.get("/cart", (req, res) => {
 
 // View checkout
 app.get("/checkout", (req, res) => {
-    const cart = req.session.cart || [];
-    res.render("checkout", {cart});
+    const cart = getCart(req);
+    console.log("Checkout page - cart items:", cart.length);
+
+    if (cart.length === 0) {
+        return res.redirect("/cart");
+    }
+    // Calculate totals properly
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const shipping = 1000;
+    const total = subtotal + shipping;
+    res.render("checkout", {cart: cart, subtotal: subtotal});
 });
 
 app.post("/checkout", (req, res) => {
     try {
-        console.log("===CHECKOUT PROCESS STARTED ===");
+        console.log("=== CHECKOUT PROCESS STARTED ===");
          const cart = getCart(req);
          console.log("Cart items:", cart.length);
          console.log("cart contents:", cart);
