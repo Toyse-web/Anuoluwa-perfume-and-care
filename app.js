@@ -22,9 +22,17 @@ async function initializeDatabase() {
         console.log("Postgres pool connected");
         client.release();
 
+        // Drop existing tables and recreate them fresh
+        await pool.query(`
+            DROP TABLE IF EXISTS session CASCADE;
+            DROP TABLE IF EXISTS products CASDADE;
+            DROP TABLE IF EXISTS categories CASDADE
+        `);
+        console.log("Dropped existing tables");
+
         // Create categories table (exact same structure as local)
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS categories (
+            CREATE TABLE categories (
             id SERIAL PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             slug VARCHAR(255)
@@ -34,7 +42,7 @@ async function initializeDatabase() {
 
         // Create products table (same structure)
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS products (
+            CREATE TABLE products (
             id SERIAL PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             description TEXT,
@@ -48,12 +56,12 @@ async function initializeDatabase() {
 
         // Session table
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS session (
+            CREATE TABLE session (
             sid VARCHAR PRIMARY KEY,
             sess JSON NOT NULL,
             expire TIMESTAMP(6) NOT NULL
             );
-            CREATE INDEX IF NOT EXISTS IDX_session_expire ON session(expire);
+            CREATE INDEX IDX_session_expire ON session(expire);
         `);
         console.log("Session table ready");
 
@@ -68,14 +76,6 @@ async function initializeDatabase() {
 async function addExactData() {
     try {
         console.log("Adding the exact data...");
-
-        // Clear existing data
-        await pool.query("DELETE FROM products");
-        await pool.query("DELETE FROM categories");
-
-        // Reset sequences
-        await pool.query("ALTER SEQUENCE categories_id_seq RESTART WITH 1");
-        await pool.query("ALTER SEQUENCE products_id_seq RESTART WITH 1");
 
         // Add the categories
         await pool.query(`
