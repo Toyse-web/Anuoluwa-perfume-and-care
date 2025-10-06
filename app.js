@@ -307,7 +307,13 @@ app.post("/checkout", (req, res) => {
             postalCode, 
             paymentMethod
         } = req.body;
-        console.log("Customer:", {fullName, email, phone});
+        console.log("Form data received:", req.body);
+
+        // check if form data is missing
+        if (!fullName || !email || !phone) {
+            console.log("Missing form data - redirecting back to checkout");
+            return res.redirect("/checkout?error=missing_fields");
+        }
         
         if (cart.length === 0) {
             console.log("Empty cart - redirecting to cart page");
