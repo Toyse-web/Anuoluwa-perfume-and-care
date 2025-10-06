@@ -196,13 +196,17 @@ function saveCart(req, res, cart) {
 
 app.get("/", async(req, res) => {
     try {
-        // Fetch categories
+        console.log("🔄 Loading homepage...");
+        
         const categoriesResult = await pool.query("SELECT * FROM categories ORDER BY id");
-
-        // Fetch products grouped be category
         const productResult = await pool.query("SELECT * FROM products ORDER BY category_id");
+        
+        console.log(`Found ${categoriesResult.rows.length} categories and ${productResult.rows.length} products`);
+        
+        // Debug: show what's in the database
+        console.log("Categories:", categoriesResult.rows.map(c => c.name));
+        console.log("Products:", productResult.rows.map(p => p.name));
 
-        // Organize into {category_id: [products]}
         const groupedProducts = {};
         productResult.rows.forEach(p => {
             if (!groupedProducts[p.category_id]) {
