@@ -89,9 +89,17 @@ async function addExactData() {
         await pool.query(`
             INSERT INTO products (name, description, price, image_url, category_id) VALUES 
             ('Chanel No. 5', 'Classic fragrance', 5000.00, 'perfume1.jpg', 1),
-            ('Shea Butter', 'Smooth body cream', 3500.00, 'body1.png', 2),
+            ('Caro Clear', 'Perfect in smooth and fresh body', 3000.00, 'body1.png', 2),
+            ('Body Nurture', 'Nurture the body', 2400.00, 'body2.jpg', 2),
+            ('Shea Butter', 'Smooth body cream', 5800.00, 'body3.jpg', 2),
+            ('Fresh', 'Freshen the body', 3500.00, 'body4.png', 2),
+            ('Shea Butter', 'Oil the body for freshnes', 4000.00, 'body5.jpg', 2),
             ('Hair Cream', 'Nourishing hair treatment', 3000.00, 'hair1.jpg', 3),
-            ('Element', 'Fresh modern scent', 1800.00, 'perfume2.jpg', 1);
+            ('Himalava', 'Protein hair cream', 4200.00, 'hair2.jpg', 3),
+            ('Element', 'Fresh modern scent', 3000.00, 'perfume2.jpg', 1)
+            ('Christian Dior', 'Perfect smell', 5200.00, 'perfume3.jpg', 1),
+            ('Dolce & Gabban', 'Men fragrances', 4000.00, 'perfume4.jpg', 1),
+            ('Lincoln', 'Smell nice', 1800.00, 'perfume5.jpg', 1);
         `);
 
         console.log("Exact data added!");
