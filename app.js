@@ -136,29 +136,6 @@ app.use(session({
     }
 }));
 
-// Debug route to check database status
-app.get("/debug-db", async (req, res) => {
-    try {
-        const categories = await pool.query("SELECT * FROM categories");
-        const products = await pool.query("SELECT * FROM products");
-        
-        res.json({
-            database: {
-                categories_count: categories.rows.length,
-                products_count: products.rows.length,
-                categories: categories.rows,
-                products: products.rows
-            },
-            environment: {
-                node_env: process.env.NODE_ENV,
-                database_url: process.env.DATABASE_URL ? 'Set' : 'Not set'
-            }
-        });
-    } catch (err) {
-        res.json({ error: err.message });
-    }
-});
-
 function normalizeCart(cartArray = []) {
     return cartArray.map(item => ({
         id: Number(item.id),
@@ -316,21 +293,26 @@ app.get("/checkout", (req, res) => {
 });
 
 app.post("/checkout", (req, res) => {
-    const cart = req.session.cart || [];
-    const {
-        fullName, 
-        email, 
-        phone, 
-        address, 
-        city, 
-        state, 
-        postalCode, 
-        paymentMethod
-    } = req.body;
-
-    if (cart.length === 0) {
-        return res.redirect("/cart");
-    }
+    try {
+        console.log("===CHECKOUT PROCESS STARTED ===");
+         const cart = req.session.cart || [];
+         console.log("Cart items:", cart.length);
+         const {
+            fullName, 
+            email, 
+            phone, 
+            address, 
+            city, 
+            state, 
+            postalCode, 
+            paymentMethod
+        } = req.body;
+        console.log("Customer:", {fullName, email, phone});
+        
+        if (cart.length === 0) {
+            console.log("Empty cart - redirecting to cart page");
+            return res.redirect("/cart");
+        }
 
     // Calculate totals
     let subtotal = 0;
@@ -351,13 +333,24 @@ app.post("/checkout", (req, res) => {
         date: new Date()
     };
 
-    console.log("New Order:", order);
     // TODO: save order to JSON/pool
+    console.log("New Order:", order);
 
     // Clear cart after order
     req.session.cart = [];
 
-    res.render("order-success", { order });
+    // Save session before redirecting
+    req.session.save((err) => {
+        if (err) {
+            console.error("Error saving session:", err);
+        }
+        console.log("Session saved, rendering order-success");
+        res.render("order-success", { order });
+    });
+    } catch (err) {
+        console.error("Checkout error:", err);
+        res.status(500).send("Checkout failed");
+    }
 });
 
 app.get("/order-success", (req, res) => {
