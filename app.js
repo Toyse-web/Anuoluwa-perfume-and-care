@@ -64,35 +64,7 @@ async function initializeDatabase() {
     }
 }
 
-// Simple version - always use your exact data
-async function addYourExactData() {
-    try {
-        // Always clear and recreate with your data
-        await pool.query("TRUNCATE TABLE products, categories RESTART IDENTITY CASCADE");
-        
-        // Add your categories
-        await pool.query(`
-            INSERT INTO categories (name, slug) VALUES 
-            ('Perfume', 'perfume'),
-            ('Body Cream', 'body-cream'),
-            ('Hair Cream', 'hair-cream');
-        `);
-        
-        // Add your products
-        await pool.query(`
-            INSERT INTO products (name, description, price, image_url, category_id) VALUES 
-            ('Chanel No. 5', 'Classic fragrance', 5000.00, 'perfume1.jpg', 1),
-            ('Shea Butter', 'Smooth body cream', 3500.00, 'body1.png', 2),
-            ('Hair Cream', 'Nourishing hair treatment', 3000.00, 'hair1.jpg', 3),
-            ('Element', 'Fresh modern scent', 1800.00, 'perfume2.jpg', 1);
-        `);
-        
-        console.log("✅ Your exact data loaded: Chanel No. 5, Shea Butter, Hair Cream, Element");
-        
-    } catch (err) {
-        console.error("Error adding your data:", err);
-    }
-}
+initializeDatabase();
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -186,52 +158,15 @@ function saveCart(req, res, cart) {
     });
 }
 
-// app.get("/", async(req, res) => {
-//     try {
-//         // Fetch categories
-//         const categoriesResult = await pool.query("SELECT * FROM categories ORDER BY id");
-
-//         // Fetch products grouped be category
-//         const productResult = await pool.query("SELECT * FROM products ORDER BY category_id");
-
-//         // Organize into {category_id: [products]}
-//         const groupedProducts = {};
-//         productResult.rows.forEach(p => {
-//             if (!groupedProducts[p.category_id]) {
-//                 groupedProducts[p.category_id] = [];
-//             }
-//             groupedProducts[p.category_id].push(p);
-//         });
-
-//         res.render("index", {
-//             categories: categoriesResult.rows,
-//             productsByCategory: groupedProducts
-//         });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).send("Server Error");
-//     }
-// });
-
-// THE SIMPLIFY ROOT ROUT FOR DEBUG
 app.get("/", async(req, res) => {
     try {
-        console.log("🔄 Loading homepage...");
-        
+        // Fetch categories
         const categoriesResult = await pool.query("SELECT * FROM categories ORDER BY id");
-        const productResult = await pool.query("SELECT * FROM products ORDER BY category_id");
-        
-        console.log(`Found ${categoriesResult.rows.length} categories and ${productResult.rows.length} products`);
-        
-        // If no data, show debug info
-        if (categoriesResult.rows.length === 0) {
-            return res.send(`
-                <h1>No Categories Found</h1>
-                <p>Check <a href="/debug-db">/debug-db</a> for database status</p>
-                <p>Check Render logs for initialization messages</p>
-            `);
-        }
 
+        // Fetch products grouped be category
+        const productResult = await pool.query("SELECT * FROM products ORDER BY category_id");
+
+        // Organize into {category_id: [products]}
         const groupedProducts = {};
         productResult.rows.forEach(p => {
             if (!groupedProducts[p.category_id]) {
@@ -245,8 +180,8 @@ app.get("/", async(req, res) => {
             productsByCategory: groupedProducts
         });
     } catch (err) {
-        console.error("Homepage error:", err);
-        res.status(500).send(`Error: ${err.message}. Check <a href="/debug-db">/debug-db</a>`);
+        console.error(err);
+        res.status(500).send("Server Error");
     }
 });
 
