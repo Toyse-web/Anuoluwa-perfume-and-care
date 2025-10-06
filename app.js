@@ -94,9 +94,9 @@ async function addExactData() {
             ('Shea Butter', 'Smooth body cream', 5800.00, 'body3.jpg', 2),
             ('Fresh', 'Freshen the body', 3500.00, 'body4.png', 2),
             ('Shea Butter', 'Oil the body for freshnes', 4000.00, 'body5.jpg', 2),
-            ('Hair Cream', 'Nourishing hair treatment', 3000.00, 'hair1.jpg', 3),
+            ('Hair Cream', 'Nourishing hair treatment', 3000.00, 'hair1.jpeg', 3),
             ('Himalava', 'Protein hair cream', 4200.00, 'hair2.jpg', 3),
-            ('Element', 'Fresh modern scent', 3000.00, 'perfume2.jpg', 1)
+            ('Element', 'Fresh modern scent', 3000.00, 'perfume2.jpg', 1),
             ('Christian Dior', 'Perfect smell', 5200.00, 'perfume3.jpg', 1),
             ('Dolce & Gabban', 'Men fragrances', 4000.00, 'perfume4.jpg', 1),
             ('Lincoln', 'Smell nice', 1800.00, 'perfume5.jpg', 1);
