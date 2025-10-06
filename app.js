@@ -25,8 +25,8 @@ async function initializeDatabase() {
         // Drop existing tables and recreate them fresh
         await pool.query(`
             DROP TABLE IF EXISTS session CASCADE;
-            DROP TABLE IF EXISTS products CASDADE;
-            DROP TABLE IF EXISTS categories CASDADE
+            DROP TABLE IF EXISTS products CASCADE;
+            DROP TABLE IF EXISTS categories CASCADE
         `);
         console.log("Dropped existing tables");
 
