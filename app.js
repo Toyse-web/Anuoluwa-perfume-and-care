@@ -123,7 +123,8 @@ app.use(session({
     store: new PgSession({
         pool: pool,
         tableName: "session",
-        createTableIfMissing: true
+        createTableIfMissing: true,
+        pruneSessionInterval: false
     }),
     secret: process.env.SESSION_SECRET || "my-secret-key",
     resave: false,
@@ -132,7 +133,8 @@ app.use(session({
         secure: process.env.NODE_ENV === "production",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         httpOnly: true,
-        sameSite: "lax"
+        sameSite: "lax",
+        domain: process.env.NODE_ENV === "production" ? '.onrender.com' : undefined
     }
 }));
 
@@ -179,9 +181,23 @@ function saveCart(req, res, cart) {
     });
 }
 
+// Debug cart state
+app.get("/debug-cart", (req, res) => {
+    const sessionCart = req.session.cart || [];
+    const cookieCart = req.cookies.cart ? JSON.parse(req.cookies.cart) : [];
+    const normalizedCart = getCart(req);
+    
+    res.json({
+        session_cart: sessionCart,
+        cookie_cart: cookieCart,
+        normalized_cart: normalizedCart,
+        session_id: req.sessionID
+    });
+});
+
 app.get("/", async(req, res) => {
     try {
-        console.log("🔄 Loading homepage...");
+        console.log("Loading homepage...");
         
         const categoriesResult = await pool.query("SELECT * FROM categories ORDER BY id");
         const productResult = await pool.query("SELECT * FROM products ORDER BY category_id");
@@ -295,8 +311,9 @@ app.get("/checkout", (req, res) => {
 app.post("/checkout", (req, res) => {
     try {
         console.log("===CHECKOUT PROCESS STARTED ===");
-         const cart = req.session.cart || [];
+         const cart = getCart(req);
          console.log("Cart items:", cart.length);
+         console.log("cart contents:", cart);
          const {
             fullName, 
             email, 
@@ -343,7 +360,8 @@ app.post("/checkout", (req, res) => {
     console.log("New Order:", order);
 
     // Clear cart after order
-    req.session.cart = [];
+    saveCart(req, res, []); // Using savecart to clear both session and cookie
+    console.log("Cart cleared");
 
     // Save session before redirecting
     req.session.save((err) => {
