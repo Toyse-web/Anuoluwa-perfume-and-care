@@ -120,6 +120,29 @@ app.use(session({
     }
 }));
 
+// Debug route to check database status
+app.get("/debug-db", async (req, res) => {
+    try {
+        const categories = await pool.query("SELECT * FROM categories");
+        const products = await pool.query("SELECT * FROM products");
+        
+        res.json({
+            database: {
+                categories_count: categories.rows.length,
+                products_count: products.rows.length,
+                categories: categories.rows,
+                products: products.rows
+            },
+            environment: {
+                node_env: process.env.NODE_ENV,
+                database_url: process.env.DATABASE_URL ? 'Set' : 'Not set'
+            }
+        });
+    } catch (err) {
+        res.json({ error: err.message });
+    }
+});
+
 function normalizeCart(cartArray = []) {
     return cartArray.map(item => ({
         id: Number(item.id),
@@ -163,15 +186,52 @@ function saveCart(req, res, cart) {
     });
 }
 
+// app.get("/", async(req, res) => {
+//     try {
+//         // Fetch categories
+//         const categoriesResult = await pool.query("SELECT * FROM categories ORDER BY id");
+
+//         // Fetch products grouped be category
+//         const productResult = await pool.query("SELECT * FROM products ORDER BY category_id");
+
+//         // Organize into {category_id: [products]}
+//         const groupedProducts = {};
+//         productResult.rows.forEach(p => {
+//             if (!groupedProducts[p.category_id]) {
+//                 groupedProducts[p.category_id] = [];
+//             }
+//             groupedProducts[p.category_id].push(p);
+//         });
+
+//         res.render("index", {
+//             categories: categoriesResult.rows,
+//             productsByCategory: groupedProducts
+//         });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).send("Server Error");
+//     }
+// });
+
+// THE SIMPLIFY ROOT ROUT FOR DEBUG
 app.get("/", async(req, res) => {
     try {
-        // Fetch categories
+        console.log("🔄 Loading homepage...");
+        
         const categoriesResult = await pool.query("SELECT * FROM categories ORDER BY id");
-
-        // Fetch products grouped be category
         const productResult = await pool.query("SELECT * FROM products ORDER BY category_id");
+        
+        console.log(`Found ${categoriesResult.rows.length} categories and ${productResult.rows.length} products`);
+        
+        // If no data, show debug info
+        if (categoriesResult.rows.length === 0) {
+            return res.send(`
+                <h1>No Categories Found</h1>
+                <p>Check <a href="/debug-db">/debug-db</a> for database status</p>
+                <p>Check Render logs for initialization messages</p>
+            `);
+        }
 
-        // Organize into {category_id: [products]}
         const groupedProducts = {};
         productResult.rows.forEach(p => {
             if (!groupedProducts[p.category_id]) {
@@ -185,8 +245,8 @@ app.get("/", async(req, res) => {
             productsByCategory: groupedProducts
         });
     } catch (err) {
-        console.error(err);
-        res.status(500).send("Server Error");
+        console.error("Homepage error:", err);
+        res.status(500).send(`Error: ${err.message}. Check <a href="/debug-db">/debug-db</a>`);
     }
 });
 
@@ -319,21 +379,6 @@ app.post("/checkout", (req, res) => {
 
 app.get("/order-success", (req, res) => {
     res.render("order-success");
-});
-
-// Add this route to see what's currently in your database
-app.get("/current-data", async (req, res) => {
-    try {
-        const categories = await pool.query("SELECT * FROM categories");
-        const products = await pool.query("SELECT * FROM products");
-        
-        res.json({
-            categories: categories.rows,
-            products: products.rows
-        });
-    } catch (err) {
-        res.json({ error: err.message });
-    }
 });
 
 // 404 error
