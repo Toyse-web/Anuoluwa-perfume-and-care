@@ -6,6 +6,7 @@
     <title>Perfume Shop</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/checkout.css">
+    <link rel="stylesheet" href="/css/auth.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -17,6 +18,16 @@
                 <a href="/products">Products</a>
                 <a href="/cart">Cart</a>
                 <a href="#">Contact</a>
+
+                <% if (locals.session && locals.session.user) { %>
+                    <a href="/orders">My Orders</a>
+                    <form action="/logout" method="POST">
+                        <button class="btn" type="submit">Logout</button>
+                    </form>
+                <% } else { %>
+                    <a href="/login">Login</a>
+                    <a href="/register">Sign Up</a>
+                <% } %>
             </nav>
         </div>
     </header>

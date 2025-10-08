@@ -5,6 +5,10 @@ const pg = require("pg");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const PgSession = require("connect-pg-simple")(session);
+const bcrypt = require("bcrypt");
+const { error } = require("console");
+
+const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS, 10) || 10;
 
 const app = express();
 
@@ -64,6 +68,17 @@ async function initializeDatabase() {
             CREATE INDEX IDX_session_expire ON session(expire);
         `);
         console.log("Session table ready");
+
+        // User table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(150) NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `)
 
         // The exact data
         await addExactData();
@@ -138,6 +153,11 @@ app.use(session({
     }
 }));
 
+app.use((req, res, next) => {
+    res.locals.session = req.session;
+    next();
+});
+
 function normalizeCart(cartArray = []) {
     return cartArray.map(item => ({
         id: Number(item.id),
@@ -178,6 +198,24 @@ function saveCart(req, res, cart) {
         httpOnly: true, //Protect from JS access
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax" //default for commerce flows
+    });
+}
+
+async function loginSession(req, res, userRow) {
+    // userRow is a DB row: {id, name, email, ...}
+    // Attach minimal user info to session
+    req.session.user = {
+        id: Number(userRow.id),
+        name: userRow.name,
+        email: userRow.email
+    };
+    // Merge existing cookie into session (getcart will restore cookie into session)
+    const currentCart = getCart(req);
+    saveCart(req, res, currentCart);
+
+    // Save session immediately (useful before redirect)
+    return new Promise((resolve, reject) => {
+        req.session.save(err => (err ? reject(err) : resolve()));
     });
 }
 
@@ -236,6 +274,92 @@ app.get("/product/:id", async (req, res) => {
     console.error(err);
     res.status(500).send("Server Error");
    }
+});
+
+// Show register page
+app.get("/register", (req, res) => {
+    res.render("auth/register", {error: null, values: {}});
+});
+
+app.post("/register", async (req, res) => {
+    try {
+        const {name, email, password} = req.body || {};
+
+        if (!name || !email || !password) {
+            return res.render("auth/register", {error: "All fields are required.", values: {name, email}}); 
+        }
+
+        // Check if user exists
+        const {rows: existing} = await pool.query("SELECT id FROM users WHERE email = $1" [email.toLowerCase()]);
+        if (existing.length > 0) {
+            return res.render("auth/register", {error: "Email already exist.", values: {name, email}});
+        }
+
+        // Hash password
+        const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+
+        // Insert user
+        const insert = await pool.query(
+            "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3)  RETURNING id, name, email",
+            [name, email.toLowerCase(), password_hash]
+        );
+
+        const newUser = insert.rows[0];
+
+        // Log user in and redirect (merge cart too)
+        await loginSession(req, res, newUser);
+        return res.redirect("/");
+    } catch (err) {
+        console.log("Register error:", err);
+        return res.status(500).render('auth/register', { error: "Server error. Try again later.", values: req.body });
+    }
+});
+
+// Login page
+app.get("/login", (req, res) => {
+    res.render("auth/login", {error: null, values: {}});
+});
+
+app.post ("/login", async (req, res) => {
+    try {
+        const {email, password} = req.body || {};
+        if (!email || !password) {
+            return res.render("auth/login", {error: "Email and password required.", values: {email}});
+        }
+
+        // Fetch user
+        const {rows} = await pool.query("SELECT id, name, email, password_hash FROM users WHERE email = $1", [email.toLowerCase()]);
+        const user = rows[0];
+        if (!user) {
+            return res.render("auth/login", {error: "Invalid credential.", values: {email}});
+        }
+
+        // Compare password
+        const ok = await bcrypt.compare(password, user.password_hash);
+        if (!ok) {
+            return res.render("auth/login", {error: "Invalid credentials.", values: {email}});
+        }
+
+        // Login put user into session and merge cart
+        await loginSession(req, res, user);
+
+        // Redirect to intended page if stored, otherwise home
+        const redirectTo = req.session.returnTo || "/";
+        delete req.session.returnTo;
+        return res.redirect(redirectTo);
+    } catch (err) {
+        console.error("Login error:", err);
+        return res.status(500).render("auth/login", {error: "Server error. Try again later.", values: req.body});
+    }
+});
+
+// Logout
+app.post("/logout", (req, res) => {
+    // destroy session & clear cookie
+    req.session.destroy(err => {
+        res.clearCookie("connect.sid"); // default name; PgSession uses this cookie
+        return res.redirect("/");
+    });
 });
 
 app.post("/cart/add/:id", async (req, res) => {
