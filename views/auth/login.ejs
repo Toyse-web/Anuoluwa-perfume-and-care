@@ -12,8 +12,8 @@
 <div class="auth-container">
     <div class="auth-card">
         <h2>Welcome Back</h2>
-        <% if (error) { %>
-            <p><%= error %></p>
+        <% if (success) { %>
+            <p class="success-message"><%= success %></p>
         <% } %>
 
         <form action="/login" method="POST" class="auth-form">

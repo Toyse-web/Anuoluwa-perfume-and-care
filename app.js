@@ -108,22 +108,22 @@ app.get("/register", (req, res) => {
 
 app.post("/register", async (req, res) => {
     try {
-        const {name, email, password} = req.body || {};
+        const {username, email, password} = req.body || {};
 
-        if (!name || !email || !password) {
-            return res.render("auth/register", {error: "All fields are required.", values: {name, email}}); 
+        if (!username || !email || !password) {
+            return res.render("auth/register", {error: "All fields are required.", values: {username, email}}); 
         }
 
         // Check if user exists
         const emailExists = await authModel.emailExists(email);
         if (emailExists) {
-            return res.render("auth/register", {error: "Email already exist.", values: {name, email}});
+            return res.render("auth/register", {error: "Email already exist.", values: {username, email}});
         }
 
-        const newUser = await authModel.createUser(name, email, password);
+        const newUser = await authModel.createUser(username, email, password);
         // Log user in and redirect (merge cart too)
         await loginSession(req, res, newUser);
-        return res.render("login", {success: "Singup successful! Proceed to login. "});
+        return res.redirect("/login?registered=true");
     } catch (err) {
         console.log("Register error:", err);
         return res.status(500).render('auth/register', { error: "Server error. Try again later.", values: req.body });
@@ -132,7 +132,8 @@ app.post("/register", async (req, res) => {
 
 // Login page
 app.get("/login", (req, res) => {
-    res.render("auth/login", {error: null, values: {}});
+    const success = req.query.registered ? "Singup successful! Please login." : null;
+    res.render("auth/login", {error: null, success, values: {}});
 });
 
 app.post ("/login", async (req, res) => {
@@ -149,7 +150,7 @@ app.post ("/login", async (req, res) => {
         }
 
         // Compare password
-        const isPasswordValid = await authModel.verifyPassword(password, user.password_harsh);
+        const isPasswordValid = await authModel.verifyPassword(password, user.password_hash);
         if (!isPasswordValid) {
             return res.render("auth/login", {error: "Invalid credentials.", values: {email}});
         }
@@ -158,8 +159,8 @@ app.post ("/login", async (req, res) => {
         await loginSession(req, res, user);
 
         // Redirect to intended page if stored, otherwise home
-        const redirectTo = req.session.returnTo || "/";
-        delete req.session.returnTo;
+        const redirectTo = req.session.redirectTo || "/checkout";
+        delete req.session.redirectTo;
         return res.redirect(redirectTo);
     } catch (err) {
         console.error("Login error:", err);
