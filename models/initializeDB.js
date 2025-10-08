@@ -1,69 +1,66 @@
-const pool = require("../config/database");
+const pool = require('../config/database');
 
-// Create table for production
 async function initializeDatabase() {
     try {
         const client = await pool.connect();
         console.log("Postgres pool connected");
         client.release();
 
-        // Create categories table (exact same structure as local)
+        // Create tables with IF NOT EXISTS
         await pool.query(`
             CREATE TABLE IF NOT EXISTS categories (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            slug VARCHAR(255)
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                slug VARCHAR(255)
             );
-        `);
-
-        // Create products table (same structure)
-        await pool.query(`
+            
             CREATE TABLE IF NOT EXISTS products (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            description TEXT,
-            price DECIMAL(10, 2) NOT NULL,
-            image_url TEXT,
-            category_id INTEGER,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                price DECIMAL(10, 2) NOT NULL,
+                image_url TEXT,
+                category_id INTEGER,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
-        `);
-
-        // Session table
-        await pool.query(`
+            
             CREATE TABLE IF NOT EXISTS session (
-            sid VARCHAR PRIMARY KEY,
-            sess JSON NOT NULL,
-            expire TIMESTAMP(6) NOT NULL
+                sid VARCHAR PRIMARY KEY,
+                sess JSON NOT NULL,
+                expire TIMESTAMP(6) NOT NULL
             );
-            CREATE INDEX IDX_session_expire ON session(expire);
-        `);
-
-        // User table
-        await pool.query(`
+            
             CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(150) NOT NULL,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(150) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
         `);
 
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS IDX_session_expire ON session(expire);
-        `);
         console.log("All tables checked/created");
+
+        // Safely create index (handle case where it already exists)
+        try {
+            await pool.query(`
+                CREATE INDEX IF NOT EXISTS IDX_session_expire ON session(expire);
+            `);
+            console.log("Session index checked/created");
+        } catch (indexErr) {
+            // If index creation fails, it might already exist - that's fine
+            console.log("Session index already exists or couldn't be created:", indexErr.message);
+        }
 
         // Check if we need to add data
         const categoriesCount = await pool.query("SELECT COUNT(*) FROM categories");
-        if (parseInt(categoriesCount.rows[0]).count === 0) {
+        if (parseInt(categoriesCount.rows[0].count) === 0) {
             console.log("Adding initial data...");
-            // The exact data
             await addExactData();
         } else {
             console.log("Database already has data");
         }
+
     } catch (err) {
         console.error("Database initialization error:", err);
     }
@@ -95,7 +92,7 @@ async function addExactData() {
             ('Himalava', 'Protein hair cream', 4200.00, 'hair2.jpg', 3),
             ('Element', 'Fresh modern scent', 3000.00, 'perfume2.jpg', 1),
             ('Christian Dior', 'Perfect smell', 5200.00, 'perfume3.jpg', 1),
-            ('Dolce & Gabban', 'Men fragrances', 4000.00, 'perfume4.jpg', 1),
+            ('Dolce & Gabbana', 'Men fragrances', 4000.00, 'perfume4.jpg', 1),
             ('Lincoln', 'Smell nice', 1800.00, 'perfume5.jpg', 1);
         `);
 
@@ -105,4 +102,7 @@ async function addExactData() {
     }
 }
 
-module.exports = {initializeDatabase, addExactData};
+module.exports = {
+    initializeDatabase,
+    addExactData
+};
