@@ -1,127 +1,19 @@
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
-const pg = require("pg");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const PgSession = require("connect-pg-simple")(session);
-const bcrypt = require("bcrypt");
-const { error } = require("console");
 
-const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS, 10) || 10;
+// Import modules
+const pool = require("./config/database");
+const { initializeDatabase } = require("./models/initializeDB");
+const authModel = require("./models/authModel");
+const { ensureAuthenticated } = require("./middlewares/authMiddleware");
+const { getCart, saveCart } = require("./utils/cartUtils");
+const { loginSession, logoutSession } = require("./utils/sessionUtils");
 
 const app = express();
-
-const { Pool } = pg;
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || "postgres://postgres:Jeanie1234*@localhost:5432/Anuoluwa-Store",
-    ssl: false
-});
-
-// Create table for production
-async function initializeDatabase() {
-    try {
-        const client = await pool.connect();
-        console.log("Postgres pool connected");
-        client.release();
-
-        // Drop existing tables and recreate them fresh
-        await pool.query(`
-            DROP TABLE IF EXISTS session CASCADE;
-            DROP TABLE IF EXISTS products CASCADE;
-            DROP TABLE IF EXISTS categories CASCADE
-        `);
-        console.log("Dropped existing tables");
-
-        // Create categories table (exact same structure as local)
-        await pool.query(`
-            CREATE TABLE categories (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            slug VARCHAR(255)
-            );
-        `);
-        console.log("Categories table ready");
-
-        // Create products table (same structure)
-        await pool.query(`
-            CREATE TABLE products (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            description TEXT,
-            price DECIMAL(10, 2) NOT NULL,
-            image_url TEXT,
-            category_id INTEGER,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        console.log("Products table ready");
-
-        // Session table
-        await pool.query(`
-            CREATE TABLE session (
-            sid VARCHAR PRIMARY KEY,
-            sess JSON NOT NULL,
-            expire TIMESTAMP(6) NOT NULL
-            );
-            CREATE INDEX IDX_session_expire ON session(expire);
-        `);
-        console.log("Session table ready");
-
-        // User table
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(150) NOT NULL,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-            );
-        `)
-
-        // The exact data
-        await addExactData();
-    } catch (err) {
-        console.error("Database initialization error:", err);
-    }
-}
-
-// The exact data function
-async function addExactData() {
-    try {
-        console.log("Adding the exact data...");
-
-        // Add the categories
-        await pool.query(`
-            INSERT INTO categories (name, slug) VALUES 
-            ('Perfume', 'perfume'),
-            ('Body Cream', 'body-cream'),
-            ('Hair Cream', 'hair-cream');
-        `);
-
-        // Add products
-        await pool.query(`
-            INSERT INTO products (name, description, price, image_url, category_id) VALUES 
-            ('Chanel No. 5', 'Classic fragrance', 5000.00, 'perfume1.jpg', 1),
-            ('Caro Clear', 'Perfect in smooth and fresh body', 3000.00, 'body1.png', 2),
-            ('Body Nurture', 'Nurture the body', 2400.00, 'body2.jpg', 2),
-            ('Shea Butter', 'Smooth body cream', 5800.00, 'body3.jpg', 2),
-            ('Fresh', 'Freshen the body', 3500.00, 'body4.png', 2),
-            ('Shea Butter', 'Oil the body for freshnes', 4000.00, 'body5.jpg', 2),
-            ('Hair Cream', 'Nourishing hair treatment', 3000.00, 'hair1.jpeg', 3),
-            ('Himalava', 'Protein hair cream', 4200.00, 'hair2.jpg', 3),
-            ('Element', 'Fresh modern scent', 3000.00, 'perfume2.jpg', 1),
-            ('Christian Dior', 'Perfect smell', 5200.00, 'perfume3.jpg', 1),
-            ('Dolce & Gabban', 'Men fragrances', 4000.00, 'perfume4.jpg', 1),
-            ('Lincoln', 'Smell nice', 1800.00, 'perfume5.jpg', 1);
-        `);
-
-        console.log("Exact data added!");
-    } catch (err) {
-        console.error("Error adding the exact data", err);
-    }
-}
 
 initializeDatabase();
 
@@ -158,67 +50,6 @@ app.use((req, res, next) => {
     next();
 });
 
-function normalizeCart(cartArray = []) {
-    return cartArray.map(item => ({
-        id: Number(item.id),
-        name: item.name,
-        price: Number(item.price) || 0,
-        image_url: item.image_url || item.image || item.imageUrl || '',
-        quantity: Number(item.quantity ?? item.qty ?? 1)
-    }));
-}
-
-// function to get cart from session or cookies
-function getCart(req) {
-    if (req.session && Array.isArray(req.session.cart)) {
-        return normalizeCart(req.session.cart);
-    }
-    
-    // If no session, check cookie
-    if (req.cookies && req.cookies.cart) {
-        try {
-            const parsed = JSON.parse(req.cookies.cart);
-            const normalized = normalizeCart(parsed);
-            // restore into session so subsequent request use session
-            if (req.session) req.session.cart = normalized; //restore into session
-            return normalized;
-        } catch (e) {
-            return [];
-        }
-    }
-    return [];
-}
-
-// Save cart to both session and cookie
-function saveCart(req, res, cart) {
-    const normalized = normalizeCart(cart);
-    if (req.session) req.session.cart = normalized;
-    res.cookie("cart", JSON.stringify(normalized), {
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        httpOnly: true, //Protect from JS access
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax" //default for commerce flows
-    });
-}
-
-async function loginSession(req, res, userRow) {
-    // userRow is a DB row: {id, name, email, ...}
-    // Attach minimal user info to session
-    req.session.user = {
-        id: Number(userRow.id),
-        name: userRow.name,
-        email: userRow.email
-    };
-    // Merge existing cookie into session (getcart will restore cookie into session)
-    const currentCart = getCart(req);
-    saveCart(req, res, currentCart);
-
-    // Save session immediately (useful before redirect)
-    return new Promise((resolve, reject) => {
-        req.session.save(err => (err ? reject(err) : resolve()));
-    });
-}
-
 // Debug cart state
 app.get("/debug-cart", (req, res) => {
     const sessionCart = req.session.cart || [];
@@ -240,12 +71,6 @@ app.get("/", async(req, res) => {
         const categoriesResult = await pool.query("SELECT * FROM categories ORDER BY id");
         const productResult = await pool.query("SELECT * FROM products ORDER BY category_id");
         
-        console.log(`Found ${categoriesResult.rows.length} categories and ${productResult.rows.length} products`);
-        
-        // Debug: show what's in the database
-        console.log("Categories:", categoriesResult.rows.map(c => c.name));
-        console.log("Products:", productResult.rows.map(p => p.name));
-
         const groupedProducts = {};
         productResult.rows.forEach(p => {
             if (!groupedProducts[p.category_id]) {
@@ -276,7 +101,7 @@ app.get("/product/:id", async (req, res) => {
    }
 });
 
-// Show register page
+// Auth Routes
 app.get("/register", (req, res) => {
     res.render("auth/register", {error: null, values: {}});
 });
@@ -290,25 +115,15 @@ app.post("/register", async (req, res) => {
         }
 
         // Check if user exists
-        const {rows: existing} = await pool.query("SELECT id FROM users WHERE email = $1" [email.toLowerCase()]);
-        if (existing.length > 0) {
+        const emailExists = await authModel.emailExists(email);
+        if (emailExists) {
             return res.render("auth/register", {error: "Email already exist.", values: {name, email}});
         }
 
-        // Hash password
-        const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
-
-        // Insert user
-        const insert = await pool.query(
-            "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3)  RETURNING id, name, email",
-            [name, email.toLowerCase(), password_hash]
-        );
-
-        const newUser = insert.rows[0];
-
+        const newUser = await authModel.createUser(name, email, password);
         // Log user in and redirect (merge cart too)
         await loginSession(req, res, newUser);
-        return res.redirect("/");
+        return res.render("login", {success: "Singup successful! Proceed to login. "});
     } catch (err) {
         console.log("Register error:", err);
         return res.status(500).render('auth/register', { error: "Server error. Try again later.", values: req.body });
@@ -328,15 +143,14 @@ app.post ("/login", async (req, res) => {
         }
 
         // Fetch user
-        const {rows} = await pool.query("SELECT id, name, email, password_hash FROM users WHERE email = $1", [email.toLowerCase()]);
-        const user = rows[0];
+       const user = await authModel.findUserByEmail(email);
         if (!user) {
             return res.render("auth/login", {error: "Invalid credential.", values: {email}});
         }
 
         // Compare password
-        const ok = await bcrypt.compare(password, user.password_hash);
-        if (!ok) {
+        const isPasswordValid = await authModel.verifyPassword(password, user.password_harsh);
+        if (!isPasswordValid) {
             return res.render("auth/login", {error: "Invalid credentials.", values: {email}});
         }
 
@@ -354,12 +168,14 @@ app.post ("/login", async (req, res) => {
 });
 
 // Logout
-app.post("/logout", (req, res) => {
-    // destroy session & clear cookie
-    req.session.destroy(err => {
-        res.clearCookie("connect.sid"); // default name; PgSession uses this cookie
+app.post("/logout", async (req, res) => {
+    try {
+        await logoutSession(req, res);
         return res.redirect("/");
-    });
+    } catch (err) {
+        console.error("Logout error:", err);
+        return res.redirect("/");
+    }
 });
 
 app.post("/cart/add/:id", async (req, res) => {
@@ -427,7 +243,7 @@ app.get("/cart", (req, res) => {
 });
 
 // View checkout
-app.get("/checkout", (req, res) => {
+app.get("/checkout", ensureAuthenticated, (req, res) => {
     const cart = getCart(req);
     console.log("Checkout page - cart items:", cart.length);
 
@@ -441,7 +257,7 @@ app.get("/checkout", (req, res) => {
     res.render("checkout", {cart: cart, subtotal: subtotal});
 });
 
-app.post("/checkout", (req, res) => {
+app.post("/checkout", ensureAuthenticated, (req, res) => {
     try {
         console.log("=== CHECKOUT PROCESS STARTED ===");
          const cart = getCart(req);
