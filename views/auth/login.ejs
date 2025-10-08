@@ -11,9 +11,13 @@
     
 <div class="auth-container">
     <div class="auth-card">
-        <h2>Welcome Back</h2>
+       <h2>Welcome Back</h2>
         <% if (success) { %>
-            <p class="success-message"><%= success %></p>
+            <p class="alert alert-message"><%= success %></p>
+        <% } %>
+
+        <% if (error) { %>
+            <div class="alert alert-error"><%= error %></div>
         <% } %>
 
         <form action="/login" method="POST" class="auth-form">
@@ -31,10 +35,17 @@
         </form>
 
         <p class="auth-footer">
-            Don't have an account? <a href="register">Sign Up</a>
+            Don't have an account? <a href="/register">Sign Up</a>
         </p>
     </div>
 </div>
+
+<script>
+    // Auto-hide alerts after few seconds
+    setTimeout(() => {
+        document.querySelectorAll(".alert").forEach(a => a.style.display = "none")
+    }, 4000);
+</script>
 </body>
 
 <%- include("../partials/footer") %>

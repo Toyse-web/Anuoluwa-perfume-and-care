@@ -103,7 +103,7 @@ app.get("/product/:id", async (req, res) => {
 
 // Auth Routes
 app.get("/register", (req, res) => {
-    res.render("auth/register", {error: null, values: {}});
+    res.render("auth/register", {error: null, success: null, values: {}});
 });
 
 app.post("/register", async (req, res) => {
@@ -111,13 +111,17 @@ app.post("/register", async (req, res) => {
         const {username, email, password} = req.body || {};
 
         if (!username || !email || !password) {
-            return res.render("auth/register", {error: "All fields are required.", values: {username, email}}); 
+            return res.render("auth/register", {error: "All fields are required.", success: null, values: {username, email}}); 
         }
 
         // Check if user exists
         const emailExists = await authModel.emailExists(email);
         if (emailExists) {
-            return res.render("auth/register", {error: "Email already exist.", values: {username, email}});
+            return res.render("auth/register", {
+                error: "Email already exists",
+                success: null,
+                values: {username, email}
+            });
         }
 
         const newUser = await authModel.createUser(username, email, password);
@@ -125,8 +129,8 @@ app.post("/register", async (req, res) => {
         await loginSession(req, res, newUser);
         return res.redirect("/login?registered=true");
     } catch (err) {
-        console.log("Register error:", err);
-        return res.status(500).render('auth/register', { error: "Server error. Try again later.", values: req.body });
+        console.error("Register error:", err);
+        return res.status(500).render('auth/register', { error: "Server error. Try again later.", success: null, values: req.body });
     }
 });
 
@@ -140,22 +144,26 @@ app.post ("/login", async (req, res) => {
     try {
         const {email, password} = req.body || {};
         if (!email || !password) {
-            return res.render("auth/login", {error: "Email and password required.", values: {email}});
+            return res.render("auth/login", {
+                error: "Email and password required.",
+                success: null, 
+                values: {email}
+            });
         }
 
         // Fetch user
        const user = await authModel.findUserByEmail(email);
         if (!user) {
-            return res.render("auth/login", {error: "Invalid credential.", values: {email}});
+            return res.render("auth/login", {error: "Invalid credential.", success: null, values: {email}});
         }
 
         // Compare password
         const isPasswordValid = await authModel.verifyPassword(password, user.password_hash);
         if (!isPasswordValid) {
-            return res.render("auth/login", {error: "Invalid credentials.", values: {email}});
+            return res.render("auth/login", {error: "Invalid credentials.", success: null, values: {email}});
         }
 
-        // Login put user into session and merge cart
+        // Login put user into session
         await loginSession(req, res, user);
 
         // Redirect to intended page if stored, otherwise home
@@ -164,7 +172,7 @@ app.post ("/login", async (req, res) => {
         return res.redirect(redirectTo);
     } catch (err) {
         console.error("Login error:", err);
-        return res.status(500).render("auth/login", {error: "Server error. Try again later.", values: req.body});
+        return res.status(500).render("auth/login", {error: "Server error. Try again later.", success: null, values: req.body});
     }
 });
 
