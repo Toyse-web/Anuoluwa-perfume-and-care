@@ -1,0 +1,66 @@
+<head>
+  <link rel="stylesheet" href="css/admin-form.css">
+</head>
+<div class="admin-form-container">
+  <h2>Edit Product</h2>
+
+  <% if (error) { %>
+    <p class="alert alert-error"><%= error %></p>
+  <% } %>
+
+  <form action="/admin/edit/<%= product.id %>" method="POST" enctype="multipart/form-data" class="admin-form">
+    <div class="input-group">
+      <label for="name">Product Name</label>
+      <input 
+        type="text" 
+        id="name" 
+        name="name" 
+        value="<%= product.name %>" 
+        required
+      >
+    </div>
+
+    <div class="input-group">
+      <label for="price">Price (₦)</label>
+      <input 
+        type="number" 
+        id="price" 
+        name="price" 
+        value="<%= product.price %>" 
+        step="0.01"
+        required
+      >
+    </div>
+
+    <div class="input-group">
+      <label for="category_id">Category</label>
+      <select id="category_id" name="category_id" required>
+        <% categories.forEach(category => { %>
+          <option value="<%= category.id %>" 
+            <%= category.id === product.category_id ? "selected" : "" %>>
+            <%= category.name %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="input-group">
+      <label>Current Image</label>
+      <div class="image-preview">
+        <% if (product.image_url) { %>
+          <img src="<%= product.image_url %>" alt="<%= product.name %>" width="100">
+        <% } else { %>
+          <p>No image uploaded</p>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label for="image">Change Image (optional)</label>
+      <input type="file" id="image" name="image" accept="image/*">
+    </div>
+
+    <button type="submit" class="btn-primary">Save Changes</button>
+    <a href="/admin" class="btn-secondary">Cancel</a>
+  </form>
+</div>

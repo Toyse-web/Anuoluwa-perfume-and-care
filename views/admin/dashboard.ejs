@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="/css/admin-style.css">
+</head>
+<body>
+<div class="dashboard-header">
+  <h2>Welcome, <%= admin.username %></h2>
+  <div class="admin-actions">
+    <a href="/admin/add-product" class="btn-primary">Add Product</a>
+    <a href="/admin/logout" class="btn-secondary">Logout</a>
+  </div>
+
+  <table class="product-table">
+    <thead>
+      <tr>
+        <th>Image</th>
+        <th>Name</th>
+        <th>Price (₦)</th>
+        <th>Category</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% products.forEach(p => { %>
+        <tr>
+          <td><img src="<%= p.image_url %>" alt="<%= p.name %>" width="50"></td>
+          <td><%= p.name %></td>
+          <td><%= p.price %></td>
+          <td><%= p.category_name %></td>
+          <td>
+            <a href="/admin/edit/<%= p.id %>">Edit</a> |
+            <form action="/admin/delete/<%= p.id %>" method="POST" style="display:inline;">
+              <button type="submit" onclick="return confirm('Delete this product?')">Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+    
+</body>
+</html>

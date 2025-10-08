@@ -4,6 +4,8 @@ const path = require("path");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const PgSession = require("connect-pg-simple")(session);
+const multer = require("multer");
+const fs = require("fs");
 
 // Import modules
 const pool = require("./config/database");
@@ -12,6 +14,8 @@ const authModel = require("./models/authModel");
 const { ensureAuthenticated } = require("./middlewares/authMiddleware");
 const { getCart, saveCart } = require("./utils/cartUtils");
 const { loginSession, logoutSession } = require("./utils/sessionUtils");
+const { ensureAdmin } = require("./middlewares/adminMiddleware");
+const { error } = require("console");
 
 const app = express();
 
@@ -50,19 +54,51 @@ app.use((req, res, next) => {
     next();
 });
 
-// Debug cart state
-app.get("/debug-cart", (req, res) => {
-    const sessionCart = req.session.cart || [];
-    const cookieCart = req.cookies.cart ? JSON.parse(req.cookies.cart) : [];
-    const normalizedCart = getCart(req);
-    
-    res.json({
-        session_cart: sessionCart,
-        cookie_cart: cookieCart,
-        normalized_cart: normalizedCart,
-        session_id: req.sessionID
-    });
+// Ensure uploads folder exists
+const uploadDir = path.join(__dirname, "public/uploads");
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, {recursive: true});
+}
+
+// Configure multer storage
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+        const uniqueName = Date.now() + "-" + file.originalname.replace(/\s+/g, "_");
+        cb(null, uniqueName);
+    }
 });
+const upload = multer({storage});
+
+// Debug: log every response attempt
+app.use((req, res, next) => {
+  let sent = false;
+  const oldRender = res.render;
+  const oldRedirect = res.redirect;
+
+  res.render = function (...args) {
+    if (sent) {
+      console.error(`⚠️ DOUBLE RENDER DETECTED on ${req.method} ${req.originalUrl}`);
+      console.trace();
+      return;
+    }
+    sent = true;
+    return oldRender.apply(this, args);
+  };
+
+  res.redirect = function (...args) {
+    if (sent) {
+      console.error(`⚠️ DOUBLE REDIRECT DETECTED on ${req.method} ${req.originalUrl}`);
+      console.trace();
+      return;
+    }
+    sent = true;
+    return oldRedirect.apply(this, args);
+  };
+
+  next();
+});
+
 
 app.get("/", async(req, res) => {
     try {
@@ -165,6 +201,13 @@ app.post ("/login", async (req, res) => {
 
         // Login put user into session
         await loginSession(req, res, user);
+        req.session.user = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            is_admin: user.is_admin
+        };
+        req.session.save();
 
         // Redirect to intended page if stored, otherwise home
         const redirectTo = req.session.redirectTo || "/checkout";
@@ -337,6 +380,131 @@ app.post("/checkout", ensureAuthenticated, (req, res) => {
 
 app.get("/order-success", (req, res) => {
     res.render("order-success");
+});
+
+// Admin dashboard
+app.get("/admin/login", (req, res) => {
+  res.render("admin/login", { error: null });
+});
+
+app.post("/admin/login", async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const result = await pool.query("SELECT * FROM admins WHERE username=$1", [username]);
+
+    if (result.rows.length === 0) {
+      return res.render("admin/login", { error: "Invalid username or password" });
+    }
+
+    const admin = result.rows[0];
+    const bcrypt = require("bcrypt");
+    const match = await bcrypt.compare(password, admin.password);
+
+    if (!match) {
+      return res.render("admin/login", { error: "Invalid username or password" });
+    }
+
+    //Save session safely
+    req.session.admin = { id: admin.id, username: admin.username };
+
+    return req.session.save(() => {
+      res.redirect("/admin");
+    });
+
+  } catch (err) {
+    console.error("Admin login error:", err);
+    return res.status(500).render("admin/login", { error: "Server error. Try again." });
+  }
+});
+
+app.get("/admin/logout", (req, res) => {
+  req.session.admin = null;
+  res.redirect("/admin/login");
+});
+
+app.get("/admin", ensureAdmin, async (req, res) => {
+  const products = await pool.query(`
+    SELECT p.*, c.name AS category_name
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    ORDER BY p.id DESC
+  `);
+
+  res.render("admin/dashboard", {
+    admin: req.session.admin,
+    products: products.rows
+  });
+});
+
+
+// Add product page
+app.get("/admin/add-product", ensureAdmin, async (req, res) => {
+  const categories = await pool.query("SELECT * FROM categories ORDER BY name ASC");
+  res.render("admin/add-product", { categories: categories.rows, error: null, success: null });
+});
+
+app.post("/admin/add-product", ensureAdmin, upload.single("image"), async (req, res) => {
+  try {
+    const { name, price, category_id } = req.body;
+    const imageFile = req.file;
+
+    if (!name || !price || !category_id || !imageFile) {
+      const categories = await pool.query("SELECT * FROM categories ORDER BY name ASC");
+      return res.render("admin/add-product", { categories: categories.rows, error: "All fields required", success: null });
+    }
+
+    const image_url = `/uploads/${imageFile.filename}`;
+    await pool.query(
+      "INSERT INTO products (name, price, category_id, image_url) VALUES ($1, $2, $3, $4)",
+      [name, price, category_id, image_url]
+    );
+
+    const categories = await pool.query("SELECT * FROM categories ORDER BY name ASC");
+    res.render("admin/add-product", { categories: categories.rows, error: null, success: "Product added successfully!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error.");
+  }
+});
+
+// Edit products
+app.get("/admin/edit/:id", ensureAdmin, async (req, res) => {
+  const { id } = req.params;
+  const product = await pool.query("SELECT * FROM products WHERE id=$1", [id]);
+  const categories = await pool.query("SELECT * FROM categories ORDER BY name ASC");
+  res.render("admin/edit-product", { product: product.rows[0], categories: categories.rows, error: null });
+});
+
+app.post("/admin/edit/:id", ensureAdmin, upload.single("image"), async (req, res) => {
+  const { id } = req.params;
+  const { name, price, category_id } = req.body;
+  const imageFile = req.file;
+
+  let query, values;
+  if (imageFile) {
+    const image_url = `/uploads/${imageFile.filename}`;
+    query = "UPDATE products SET name=$1, price=$2, category_id=$3, image_url=$4 WHERE id=$5";
+    values = [name, price, category_id, image_url, id];
+  } else {
+    query = "UPDATE products SET name=$1, price=$2, category_id=$3 WHERE id=$4";
+    values = [name, price, category_id, id];
+  }
+
+  await pool.query(query, values);
+  res.redirect("/admin");
+});
+
+
+
+// Delete product
+app.post("/admin/delete/:id", ensureAdmin, async (req, res) => {
+    try {
+        await pool.query("DELETE FROM products WHERE id = $1", [req.params.id]);
+        res.redirect("/admin");
+    } catch (err) {
+        console.error(err);
+        res.status(500).render("error", {message: "Failed to delete product", error: err});
+    }
 });
 
 // 404 error
