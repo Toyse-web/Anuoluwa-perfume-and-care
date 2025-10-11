@@ -30,6 +30,8 @@ app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 
+app.set("trust proxy", 1);
+
 // Session middleware
 app.use(session({
     store: new PgSession({
@@ -45,10 +47,19 @@ app.use(session({
         secure: process.env.NODE_ENV === "production",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         domain: process.env.NODE_ENV === "production" ? '.onrender.com' : undefined
     }
 }));
+
+// Session debugging middleware
+app.use((req, res, next) => {
+    console.log("=== SESSION DEBUG ===");
+    console.log("Session ID:", req.sessionID);
+    console.log("Admin in session:", req.session.admin);
+    console.log("=== END SESSION DEBUG ===");
+    next();
+});
 
 app.use((req, res, next) => {
     res.locals.session = req.session;
@@ -400,18 +411,15 @@ app.post("/admin/login", ensureAdminGuest, async (req, res) => {
     const result = await pool.query("SELECT * FROM admins WHERE username = $1", [username]);
 
     if (result.rows.length === 0) {
-        console.log("Admin not found:", username);
         return res.render("admin/login", { error: "Invalid username or password" });
     }
 
     const admin = result.rows[0];
-    console.log("Admin found:", admin.username, "Password hash exists:", !!admin.password_hash);
-
+   
     // Compare passwords
     const match = await bcrypt.compare(password, admin.password_hash);
 
     if (!match) {
-        console.log("Password mismatch for admin:", username);
         return res.render("admin/login", { error: "Invalid username or password" });
     }
     console.log("Admin login successful:", username);
@@ -422,7 +430,6 @@ app.post("/admin/login", ensureAdminGuest, async (req, res) => {
         username: admin.username,
         email: admin.email
     };
-    console.log("Session before save:", req.session);
 
     req.session.save((err) => {
         if (err) {
@@ -430,8 +437,8 @@ app.post("/admin/login", ensureAdminGuest, async (req, res) => {
             return res.render("admin/login", {error: "Session error. Please try again."});
         }
         console.log("Session saved successfully, redirecting to /admin");
-        console.log("Session after save:", req.session);
-      res.redirect("/admin");
+        // Force a hard redirect
+        return res.redirect(302, "/admin");
     });
 
   } catch (err) {
