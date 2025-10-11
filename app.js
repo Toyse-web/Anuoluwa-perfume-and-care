@@ -3,6 +3,7 @@ const express = require("express");
 const path = require("path");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
+const bcrypt = require("bcrypt");
 const PgSession = require("connect-pg-simple")(session);
 const multer = require("multer");
 const fs = require("fs");
@@ -390,24 +391,48 @@ app.get("/admin/login", ensureAdminGuest, (req, res) => {
 app.post("/admin/login", ensureAdminGuest, async (req, res) => {
   const { username, password } = req.body;
   try {
+    // Validate input
+    if (!username || !password) {
+        return res.render("admin/login", {error: "Username and password are required"});
+    }
+    console.log("Admin login attempt for username:", username);
+
     const result = await pool.query("SELECT * FROM admins WHERE username=$1", [username]);
 
     if (result.rows.length === 0) {
-      return res.render("admin/login", { error: "Invalid username or password" });
+        console.log("Admin not found:", username);
+        return res.render("admin/login", { error: "Invalid username or password" });
     }
 
     const admin = result.rows[0];
-    const bcrypt = require("bcrypt");
-    const match = await bcrypt.compare(password, admin.password);
+    console.log("Admin found:", admin.username, "Password hash exists:", !!admin.password_hash);
+
+    // Validate we have both password and hash
+    if (!password || !admin.password_hash) {
+        console.error("Missing password or passwrd_hash");
+        return res.render("admin/login", {error: "Authentication error. Please try again."});
+    }
+    // Compare passwords
+    const match = await bcrypt.compare(password, admin.password_hash);
 
     if (!match) {
-      return res.render("admin/login", { error: "Invalid username or password" });
+        console.log("Password mismatch for admin:", username);
+        return res.render("admin/login", { error: "Invalid username or password" });
     }
+    console.log("Admin login successful:", username);
 
     //Save session safely
-    req.session.admin = { id: admin.id, username: admin.username };
+    req.session.admin = { 
+        id: admin.id, 
+        username: admin.username,
+        email: admin.email
+    };
 
-    return req.session.save(() => {
+    return req.session.save((err) => {
+        if (err) {
+            console.error("Session save error:", err);
+            return res.render("admin/login", {error: "Session error. Please try again."});
+        }
       res.redirect("/admin");
     });
 
