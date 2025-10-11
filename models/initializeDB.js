@@ -127,8 +127,8 @@ async function addAdminUsers() {
         console.log("Creating admin users...");
 
         // Hash password for admin users
-        const admin1Hash = await bcrypt.hash("Toysedevs", SALT_ROUNDS);
-        const admin2Hash = await bcrypt.hash("Anuoluwa", SALT_ROUNDS);
+        const admin1Hash = await bcrypt.hash("Anuoluwapo12", SALT_ROUNDS);
+        const admin2Hash = await bcrypt.hash("secure456", SALT_ROUNDS);
 
         // Insert admin users
         await pool.query(`
