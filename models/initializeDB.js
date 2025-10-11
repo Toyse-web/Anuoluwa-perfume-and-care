@@ -124,7 +124,7 @@ async function addExactData() {
 // The add admin users function
 async function addAdminUsers() {
     try {
-        console.log("Creating admin users...");
+        console.log("Creating/updating admin users...");
 
         // Hash password for admin users
         const admin1Hash = await bcrypt.hash("Anuoluwapo12", SALT_ROUNDS);
@@ -135,7 +135,9 @@ async function addAdminUsers() {
             INSERT INTO admins (username, email, password_hash) VALUES
             ('Toysedevs', 'olayonwatoyib05@gmail.com', $1),
             ('Anuoluwa', 'anuoluwapoadejare3@gmail.com', $2)
-            ON CONFLICT (username) DO NOTHING;
+            ON CONFLICT (username) DO UPDATE SET
+            password_hash = EXCLUDED.password_hash,
+            email = EXCLUDED.email
             `, [admin1Hash, admin2Hash]);
 
             console.log("Admin users created!");

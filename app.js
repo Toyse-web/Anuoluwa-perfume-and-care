@@ -387,6 +387,20 @@ app.get("/order-success", (req, res) => {
     res.render("order-success");
 });
 
+// ADMIN DEBUG ROUTE
+// Debug route to check admin data
+app.get("/debug-admin-data", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT id, username, email, password_hash FROM admins");
+        res.json({
+            adminCount: result.rows.length,
+            admins: result.rows
+        });
+    } catch (err) {
+        res.json({ error: err.message });
+    }
+});
+
 // Admin dashboard
 app.get("/admin/login", ensureAdminGuest, (req, res) => {
   res.render("admin/login", { error: null });
