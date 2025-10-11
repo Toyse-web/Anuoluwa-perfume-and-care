@@ -133,8 +133,8 @@ async function addAdminUsers() {
         // Insert admin users
         await pool.query(`
             INSERT INTO admins (username, email, password_hash) VALUES
-            ("Toysedevs", "olayonwatoyib05@gmail.com", $1),
-            ("Anuoluwa", "anuoluwapoadejare3@gmail.com", $2)
+            ('Toysedevs', 'olayonwatoyib05@gmail.com', $1),
+            ('Anuoluwa', 'anuoluwapoadejare3@gmail.com', $2)
             ON CONFLICT (username) DO NOTHING;
             `, [admin1Hash, admin2Hash]);
 
