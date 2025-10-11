@@ -130,15 +130,15 @@ async function addAdminUsers() {
         const admin1Hash = await bcrypt.hash("Anuoluwapo12", SALT_ROUNDS);
         const admin2Hash = await bcrypt.hash("secure456", SALT_ROUNDS);
 
+        // First, delete any existing admin users to start fresh
+        await pool.query("DELETE FROM admins WHERE username IN ('Toysedevs', 'Anuoluwa')");
+
         // Insert admin users
         await pool.query(`
             INSERT INTO admins (username, email, password_hash) VALUES
             ('Toysedevs', 'olayonwatoyib05@gmail.com', $1),
             ('Anuoluwa', 'anuoluwapoadejare3@gmail.com', $2)
-            ON CONFLICT (username) DO UPDATE SET
-            password_hash = EXCLUDED.password_hash,
-            email = EXCLUDED.email
-            `, [admin1Hash, admin2Hash]);
+        `, [admin1Hash, admin2Hash]);
 
             console.log("Admin users created!");
             console.log("Admin Credentials:");
