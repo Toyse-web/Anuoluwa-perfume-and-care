@@ -14,7 +14,7 @@ const authModel = require("./models/authModel");
 const { ensureAuthenticated } = require("./middlewares/authMiddleware");
 const { getCart, saveCart } = require("./utils/cartUtils");
 const { loginSession, logoutSession } = require("./utils/sessionUtils");
-const { ensureAdmin } = require("./middlewares/adminMiddleware");
+const { ensureAdmin, ensureAdminGuest } = require("./middlewares/adminMiddleware");
 const { error } = require("console");
 
 const app = express();
@@ -383,11 +383,11 @@ app.get("/order-success", (req, res) => {
 });
 
 // Admin dashboard
-app.get("/admin/login", (req, res) => {
+app.get("/admin/login", ensureAdminGuest, (req, res) => {
   res.render("admin/login", { error: null });
 });
 
-app.post("/admin/login", async (req, res) => {
+app.post("/admin/login", ensureAdminGuest, async (req, res) => {
   const { username, password } = req.body;
   try {
     const result = await pool.query("SELECT * FROM admins WHERE username=$1", [username]);

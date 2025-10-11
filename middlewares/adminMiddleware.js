@@ -1,8 +1,15 @@
 function ensureAdmin(req, res, next) {
-  if (!req.session.admin) {
-    return res.redirect("/admin/login");
+  if (req.session && req.session.admin) {
+    return next();
   }
-  next(); 
+  return res.redirect("/admin/login"); 
 }
 
-module.exports = { ensureAdmin };
+function ensureAdminGuest(req, res, next) {
+  if (req.session && req.session.admin) {
+    return res.redirect("/admin");
+  }
+  next();
+}
+
+module.exports = { ensureAdmin, ensureAdminGuest };
