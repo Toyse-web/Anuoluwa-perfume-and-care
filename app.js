@@ -397,7 +397,7 @@ app.post("/admin/login", ensureAdminGuest, async (req, res) => {
     }
     console.log("Admin login attempt for username:", username);
 
-    const result = await pool.query("SELECT * FROM admins WHERE username=$1", [username]);
+    const result = await pool.query("SELECT * FROM admins WHERE username = $1", [username]);
 
     if (result.rows.length === 0) {
         console.log("Admin not found:", username);
@@ -407,11 +407,6 @@ app.post("/admin/login", ensureAdminGuest, async (req, res) => {
     const admin = result.rows[0];
     console.log("Admin found:", admin.username, "Password hash exists:", !!admin.password_hash);
 
-    // Validate we have both password and hash
-    if (!password || !admin.password_hash) {
-        console.error("Missing password or passwrd_hash");
-        return res.render("admin/login", {error: "Authentication error. Please try again."});
-    }
     // Compare passwords
     const match = await bcrypt.compare(password, admin.password_hash);
 
@@ -427,12 +422,15 @@ app.post("/admin/login", ensureAdminGuest, async (req, res) => {
         username: admin.username,
         email: admin.email
     };
+    console.log("Session before save:", req.session);
 
-    return req.session.save((err) => {
+    req.session.save((err) => {
         if (err) {
             console.error("Session save error:", err);
             return res.render("admin/login", {error: "Session error. Please try again."});
         }
+        console.log("Session saved successfully, redirecting to /admin");
+        console.log("Session after save:", req.session);
       res.redirect("/admin");
     });
 
@@ -448,17 +446,25 @@ app.get("/admin/logout", (req, res) => {
 });
 
 app.get("/admin", ensureAdmin, async (req, res) => {
-  const products = await pool.query(`
-    SELECT p.*, c.name AS category_name
-    FROM products p
-    LEFT JOIN categories c ON p.category_id = c.id
-    ORDER BY p.id DESC
-  `);
+    try {
+        console.log("Accessing admin dashboard for:", req.session.admin.username);
+        
+        const products = await pool.query(`
+            SELECT p.*, c.name AS category_name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            ORDER BY p.id DESC
+        `);
+        console.log("Rendering admin dashboard with", products.rows.length, "products");
 
-  res.render("admin/dashboard", {
-    admin: req.session.admin,
-    products: products.rows
-  });
+        res.render("admin/dashboard", {
+            admin: req.session.admin,
+            products: products.rows
+        });
+    } catch (err) {
+        console.error("Admin dashboard error:", err);
+        res.status(500).render("admin/login", {error: "Server error. Try again."});
+    }
 });
 
 
