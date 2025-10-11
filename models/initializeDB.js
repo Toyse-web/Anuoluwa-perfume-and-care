@@ -71,14 +71,8 @@ async function initializeDatabase() {
             console.log("Database already has data");
         }
 
-        // Check if we need to add admin users
-        const adminsCount = await pool.query("SELECT COUNT(*) FROM admins");
-        if (parseInt(adminsCount.rows[0].count) === 0) {
-            console.log("Adding admin users...");
-            await addAdminUsers();
-        } else {
-            console.log("Admin users already exist");
-        }
+       console.log("Force updating admin users...");
+       await addAdminUsers();
 
     } catch (err) {
         console.error("Database initialization error:", err);
@@ -124,14 +118,13 @@ async function addExactData() {
 // The add admin users function
 async function addAdminUsers() {
     try {
-        console.log("Creating/updating admin users...");
+        console.log("Updating admin users...");
 
         // Hash password for admin users
         const admin1Hash = await bcrypt.hash("Anuoluwapo12", SALT_ROUNDS);
         const admin2Hash = await bcrypt.hash("secure456", SALT_ROUNDS);
 
-        // First, delete any existing admin users to start fresh
-        await pool.query("DELETE FROM admins WHERE username IN ('Toysedevs', 'Anuoluwa')");
+        console.log("Deleting existing admin users...");
 
         // Insert admin users
         await pool.query(`
@@ -144,8 +137,13 @@ async function addAdminUsers() {
             console.log("Admin Credentials:");
             console.log("  Username: Toysedevs, Password: Anuoluwapo12");
             console.log("  Username: Anuoluwa, Password: secure456");
+
+            // Verify if the update worked
+            const result = await pool.query("SELECT username FROM admins");
+            console.log("Current admins in database:", result.rows);
     } catch (err) {
-        console.log("Error creating admin users:", err);
+        console.error("Error updating admin users:", err);
+        console.error("Full error", err)
     }
 }
 

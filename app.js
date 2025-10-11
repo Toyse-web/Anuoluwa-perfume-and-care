@@ -387,20 +387,6 @@ app.get("/order-success", (req, res) => {
     res.render("order-success");
 });
 
-// ADMIN DEBUG ROUTE
-// Debug route to check admin data
-app.get("/debug-admin-data", async (req, res) => {
-    try {
-        const result = await pool.query("SELECT id, username, email, password_hash FROM admins");
-        res.json({
-            adminCount: result.rows.length,
-            admins: result.rows
-        });
-    } catch (err) {
-        res.json({ error: err.message });
-    }
-});
-
 // Admin dashboard
 app.get("/admin/login", ensureAdminGuest, (req, res) => {
   res.render("admin/login", { error: null });
@@ -452,6 +438,30 @@ app.post("/admin/login", ensureAdminGuest, async (req, res) => {
     console.error("Admin login error:", err);
     return res.status(500).render("admin/login", { error: "Server error. Try again." });
   }
+});
+
+// ADMIN DEBUG ROUTE
+// Debug route to check admin data
+app.get("/debug-admin-data", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT id, username, email, password_hash FROM admins");
+        res.json({
+            adminCount: result.rows.length,
+            admins: result.rows
+        });
+    } catch (err) {
+        res.json({ error: err.message });
+    }
+});
+
+// Temporary route to manually update admin passwords
+app.get("/force-update-admins", async (req, res) => {
+    try {
+        await addAdminUsers();
+        res.send("Admin passwords forced to update! Check Render logs.");
+    } catch (err) {
+        res.send("Error: " + err.message);
+    }
 });
 
 app.get("/admin/logout", (req, res) => {
