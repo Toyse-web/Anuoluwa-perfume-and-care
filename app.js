@@ -48,7 +48,7 @@ app.use(session({
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         httpOnly: true,
         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        domain: process.env.NODE_ENV === "production" ? '.onrender.com' : undefined
+        // domain: process.env.NODE_ENV === "production" ? '.onrender.com' : undefined
     }
 }));
 
@@ -213,13 +213,6 @@ app.post ("/login", async (req, res) => {
 
         // Login put user into session
         await loginSession(req, res, user);
-        req.session.user = {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            is_admin: user.is_admin
-        };
-        req.session.save();
 
         // Redirect to intended page if stored, otherwise home
         const redirectTo = req.session.redirectTo || "/checkout";

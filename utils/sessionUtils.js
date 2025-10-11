@@ -2,7 +2,7 @@ const { getCart, saveCart } = require('./cartUtils');
 
 async function loginSession(req, res, userRow) {
     // userRow is a DB row: {id, name, email, ...}
-    // Attach minimal user info to session
+    // Attach user info to session
     req.session.user = {
         id: Number(userRow.id),
         name: userRow.name,
@@ -12,7 +12,7 @@ async function loginSession(req, res, userRow) {
     const currentCart = getCart(req);
     saveCart(req, res, currentCart);
 
-    // Save session immediately (useful before redirect)
+    // Save session immediately
     return new Promise((resolve, reject) => {
         req.session.save(err => (err ? reject(err) : resolve()));
     });
