@@ -395,11 +395,11 @@ app.get("/admin/login", ensureAdminGuest, (req, res) => {
 app.post("/admin/login", ensureAdminGuest, async (req, res) => {
   const { username, password } = req.body;
   try {
-    // Validate input
     if (!username || !password) {
         return res.render("admin/login", {error: "Username and password are required"});
     }
-    console.log("Admin login attempt for username:", username);
+
+    console.log("Admin login attempt for:", username);
 
     const result = await pool.query("SELECT * FROM admins WHERE username = $1", [username]);
 
@@ -408,16 +408,17 @@ app.post("/admin/login", ensureAdminGuest, async (req, res) => {
     }
 
     const admin = result.rows[0];
-   
-    // Compare passwords
+    
+    // Direct comparison with password_hash
     const match = await bcrypt.compare(password, admin.password_hash);
 
     if (!match) {
         return res.render("admin/login", { error: "Invalid username or password" });
     }
+
     console.log("Admin login successful:", username);
 
-    //Save session safely
+    // Save session
     req.session.admin = { 
         id: admin.id, 
         username: admin.username,
@@ -429,39 +430,13 @@ app.post("/admin/login", ensureAdminGuest, async (req, res) => {
             console.error("Session save error:", err);
             return res.render("admin/login", {error: "Session error. Please try again."});
         }
-        console.log("Session saved successfully, redirecting to /admin");
-        // Force a hard redirect
-        return res.redirect(302, "/admin");
+        return res.redirect("/admin");
     });
 
   } catch (err) {
     console.error("Admin login error:", err);
     return res.status(500).render("admin/login", { error: "Server error. Try again." });
   }
-});
-
-// ADMIN DEBUG ROUTE
-// Debug route to check admin data
-app.get("/debug-admin-data", async (req, res) => {
-    try {
-        const result = await pool.query("SELECT id, username, email, password_hash FROM admins");
-        res.json({
-            adminCount: result.rows.length,
-            admins: result.rows
-        });
-    } catch (err) {
-        res.json({ error: err.message });
-    }
-});
-
-// Temporary route to manually update admin passwords
-app.get("/force-update-admins", async (req, res) => {
-    try {
-        await addAdminUsers();
-        res.send("Admin passwords forced to update! Check Render logs.");
-    } catch (err) {
-        res.send("Error: " + err.message);
-    }
 });
 
 app.get("/admin/logout", (req, res) => {
