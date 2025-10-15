@@ -10,7 +10,7 @@ const fs = require("fs");
 
 // Import modules
 const pool = require("./config/database");
-const { initializeDatabase } = require("./models/initializeDB");
+const { initializeDatabase, addAdminUsers } = require("./models/initializeDB");
 const authModel = require("./models/authModel");
 const { ensureAuthenticated } = require("./middlewares/authMiddleware");
 const { getCart, saveCart } = require("./utils/cartUtils");

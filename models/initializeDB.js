@@ -51,6 +51,10 @@ async function initializeDatabase() {
 
         console.log("All tables checked/created");
 
+        // Always update admin users
+        console.log("Force updating admin users...");
+        await addAdminUsers();
+
         // Create index
         try {
             await pool.query(`
@@ -149,5 +153,6 @@ async function addAdminUsers() {
 
 module.exports = {
     initializeDatabase,
-    addExactData
+    addExactData,
+    addAdminUsers
 };
