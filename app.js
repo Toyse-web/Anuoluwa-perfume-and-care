@@ -82,34 +82,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({storage});
 
-// Debug: log every response attempt
-app.use((req, res, next) => {
-  let sent = false;
-  const oldRender = res.render;
-  const oldRedirect = res.redirect;
-
-  res.render = function (...args) {
-    if (sent) {
-      console.error(`⚠️ DOUBLE RENDER DETECTED on ${req.method} ${req.originalUrl}`);
-      console.trace();
-      return;
-    }
-    sent = true;
-    return oldRender.apply(this, args);
-  };
-
-  res.redirect = function (...args) {
-    if (sent) {
-      console.error(`⚠️ DOUBLE REDIRECT DETECTED on ${req.method} ${req.originalUrl}`);
-      console.trace();
-      return;
-    }
-    sent = true;
-    return oldRedirect.apply(this, args);
-  };
-
-  next();
-});
 
 
 app.get("/", async(req, res) => {
@@ -387,6 +359,61 @@ app.get("/order-success", (req, res) => {
     res.render("order-success");
 });
 
+// Update admin passwords on Render (run this once)
+app.get("/update-render-passwords", async (req, res) => {
+    try {
+        console.log("🔄 Updating admin passwords on Render...");
+        
+        // Hash new passwords
+        const admin1Hash = await bcrypt.hash("Toyse2025", 10);
+        const admin2Hash = await bcrypt.hash("Anuoluwa2025", 10);
+        
+        // Update passwords for existing admin users
+        const result1 = await pool.query(
+            "UPDATE admins SET password_hash = $1 WHERE username = 'Toysedevs' RETURNING username",
+            [admin1Hash]
+        );
+        
+        const result2 = await pool.query(
+            "UPDATE admins SET password_hash = $2 WHERE username = 'Anuoluwa' RETURNING username",
+            [admin2Hash]
+        );
+        
+        console.log("Updated admin:", result1.rows[0]?.username);
+        console.log("Updated admin:", result2.rows[0]?.username);
+        
+        res.send(`
+            <h1>Render Admin Passwords Updated! ✅</h1>
+            <p><strong>Use these NEW passwords on Render:</strong></p>
+            <p>Username: Toysedevs, Password: Toyse2025</p>
+            <p>Username: Anuoluwa, Password: Anuoluwa2025</p>
+            <a href="/admin/login">Go to Admin Login</a>
+        `);
+        
+    } catch (err) {
+        res.send("Error: " + err.message);
+    }
+});
+
+// Check current admin data on Render
+app.get("/debug-render-admins", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT id, username, email, password_hash FROM admins");
+        res.json({
+            adminCount: result.rows.length,
+            admins: result.rows.map(admin => ({
+                id: admin.id,
+                username: admin.username,
+                email: admin.email,
+                password_hash: admin.password_hash ? 'Exists' : 'Missing',
+                password_hash_length: admin.password_hash ? admin.password_hash.length : 0
+            }))
+        });
+    } catch (err) {
+        res.json({ error: err.message });
+    }
+});
+
 // Admin dashboard
 app.get("/admin/login", ensureAdminGuest, (req, res) => {
   res.render("admin/login", { error: null });
@@ -483,7 +510,7 @@ app.post("/admin/add-product", ensureAdmin, upload.single("image"), async (req, 
       return res.render("admin/add-product", { categories: categories.rows, error: "All fields required", success: null });
     }
 
-    const image_url = `/uploads/${imageFile.filename}`;
+    const image_url = imageFile ? `/uploads/${imageFile.filename}` : null;
     await pool.query(
       "INSERT INTO products (name, price, category_id, image_url) VALUES ($1, $2, $3, $4)",
       [name, price, category_id, image_url]
