@@ -359,64 +359,17 @@ app.get("/order-success", (req, res) => {
     res.render("order-success");
 });
 
-// Update admin passwords on Render (run this once)
-app.get("/update-render-passwords", async (req, res) => {
-    try {
-        console.log("🔄 Updating admin passwords on Render...");
-        
-        // Hash new passwords
-        const admin1Hash = await bcrypt.hash("Toyse2025", 10);
-        const admin2Hash = await bcrypt.hash("Anuoluwa2025", 10);
-        
-        // Update passwords for existing admin users
-        const result1 = await pool.query(
-            "UPDATE admins SET password_hash = $1 WHERE username = 'Toysedevs' RETURNING username",
-            [admin1Hash]
-        );
-        
-        const result2 = await pool.query(
-            "UPDATE admins SET password_hash = $2 WHERE username = 'Anuoluwa' RETURNING username",
-            [admin2Hash]
-        );
-        
-        console.log("Updated admin:", result1.rows[0]?.username);
-        console.log("Updated admin:", result2.rows[0]?.username);
-        
-        res.send(`
-            <h1>Render Admin Passwords Updated! ✅</h1>
-            <p><strong>Use these NEW passwords on Render:</strong></p>
-            <p>Username: Toysedevs, Password: Toyse2025</p>
-            <p>Username: Anuoluwa, Password: Anuoluwa2025</p>
-            <a href="/admin/login">Go to Admin Login</a>
-        `);
-        
-    } catch (err) {
-        res.send("Error: " + err.message);
-    }
-});
-
-// Check current admin data on Render
-app.get("/debug-render-admins", async (req, res) => {
-    try {
-        const result = await pool.query("SELECT id, username, email, password_hash FROM admins");
-        res.json({
-            adminCount: result.rows.length,
-            admins: result.rows.map(admin => ({
-                id: admin.id,
-                username: admin.username,
-                email: admin.email,
-                password_hash: admin.password_hash ? 'Exists' : 'Missing',
-                password_hash_length: admin.password_hash ? admin.password_hash.length : 0
-            }))
-        });
-    } catch (err) {
-        res.json({ error: err.message });
-    }
-});
-
 // Admin dashboard
 app.get("/admin/login", ensureAdminGuest, (req, res) => {
   res.render("admin/login", { error: null });
+});
+
+// Clear session and force fresh login
+app.get("/admin-clear-session", (req, res) => {
+    req.session.destroy((err) => {
+        res.clearCookie("connect.sid");
+        res.redirect("/admin/login");
+    });
 });
 
 app.post("/admin/login", ensureAdminGuest, async (req, res) => {
@@ -464,6 +417,64 @@ app.post("/admin/login", ensureAdminGuest, async (req, res) => {
     console.error("Admin login error:", err);
     return res.status(500).render("admin/login", { error: "Server error. Try again." });
   }
+});
+
+// Reset admin table completely on Render
+app.get("/reset-admins", async (req, res) => {
+    try {
+        console.log("Resetting admin table on Render...");
+        
+        // Drop the admin table completely
+        await pool.query("DROP TABLE IF EXISTS admins CASCADE");
+        console.log("Admin table dropped");
+        
+        // Recreate the admin table with correct structure
+        await pool.query(`
+            CREATE TABLE admins (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log("Admin table recreated");
+        
+        // Hash new passwords
+        const admin1Hash = await bcrypt.hash("Toyse2025", 10);
+        const admin2Hash = await bcrypt.hash("Anuoluwa2025", 10);
+        
+        // Insert fresh admin users with new passwords
+        await pool.query(`
+            INSERT INTO admins (username, email, password_hash) VALUES
+            ('Toysedevs', 'olayonwatoyib05@gmail.com', $1),
+            ('Anuoluwa', 'anuoluwapoadejare3@gmail.com', $2)
+        `, [admin1Hash, admin2Hash]);
+        console.log("Admin users inserted with new passwords");
+        
+        // Verify the creation worked
+        const verifyResult = await pool.query("SELECT username FROM admins");
+        console.log("Current admins:", verifyResult.rows);
+        
+        res.send(`
+            <h1>Admin Table Reset Complete!</h1>
+            <p><strong>Use these NEW credentials:</strong></p>
+            <p>Username: <strong>Toysedevs</strong>, Password: <strong>Toyse2025</strong></p>
+            <p>Username: <strong>Anuoluwa</strong>, Password: <strong>Anuoluwa2025</strong></p>
+            <br>
+            <p><a href="/admin/login" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Admin Login</a></p>
+            <br>
+            <p><strong>If it still doesn't work, clear your browser cookies and try again.</strong></p>
+        `);
+        
+    } catch (err) {
+        console.error("Error resetting admin table:", err);
+        res.send(`
+            <h1>Error Resetting Admin Table</h1>
+            <p>Error: ${err.message}</p>
+            <p>Check Render logs for details.</p>
+        `);
+    }
 });
 
 app.get("/admin/logout", (req, res) => {
@@ -550,8 +561,6 @@ app.post("/admin/edit/:id", ensureAdmin, upload.single("image"), async (req, res
   await pool.query(query, values);
   res.redirect("/admin");
 });
-
-
 
 // Delete product
 app.post("/admin/delete/:id", ensureAdmin, async (req, res) => {
