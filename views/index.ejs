@@ -11,7 +11,7 @@
           <% productsByCategory[cat.id].forEach(p => { %>
             <article class="product-card">
               <div class="product-image">
-                <img src="<%= p.image_url %>" alt="<%= p.name %>">
+                <img src="<%= p.image_url.startsWith('/uploads/') ? p.image_url : '/uploads/' + p.image_url %>" alt="<%= p.name %>">
               </div>
               <div class="product-info">
                 <h3><%= p.name %></h3>

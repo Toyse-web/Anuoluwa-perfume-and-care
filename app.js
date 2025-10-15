@@ -29,6 +29,8 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
+// Serve uploaded images to the public
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 app.set("trust proxy", 1);
 
@@ -51,15 +53,6 @@ app.use(session({
         // domain: process.env.NODE_ENV === "production" ? '.onrender.com' : undefined
     }
 }));
-
-// Session debugging middleware
-app.use((req, res, next) => {
-    console.log("=== SESSION DEBUG ===");
-    console.log("Session ID:", req.sessionID);
-    console.log("Admin in session:", req.session.admin);
-    console.log("=== END SESSION DEBUG ===");
-    next();
-});
 
 app.use((req, res, next) => {
     res.locals.session = req.session;

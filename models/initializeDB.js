@@ -79,8 +79,6 @@ async function initializeDatabase() {
             console.log("Admin users already exist - skipping creation");
         }
 
-        console.log("Database initialization complete!");
-
     } catch (err) {
         console.error("Database initialization error:", err);
     }
