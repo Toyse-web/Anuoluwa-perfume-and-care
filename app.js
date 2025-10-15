@@ -506,27 +506,42 @@ app.get("/admin/add-product", ensureAdmin, async (req, res) => {
 
 app.post("/admin/add-product", ensureAdmin, upload.single("image"), async (req, res) => {
   try {
-    const { name, price, category_id } = req.body;
+    const { name, price, description, category_id } = req.body;
     const imageFile = req.file;
 
-    if (!name || !price || !category_id || !imageFile) {
+    // Validate fields
+    if (!name || !price || !description || !category_id || !imageFile) {
       const categories = await pool.query("SELECT * FROM categories ORDER BY name ASC");
-      return res.render("admin/add-product", { categories: categories.rows, error: "All fields required", success: null });
+      return res.render("admin/add-product", {
+        categories: categories.rows,
+        error: "All fields are required",
+        success: null
+      });
     }
 
+    // Set image URL path
     const image_url = imageFile ? `/uploads/${imageFile.filename}` : null;
+
+    // Insert product into DB with description
     await pool.query(
-      "INSERT INTO products (name, price, category_id, image_url) VALUES ($1, $2, $3, $4)",
-      [name, price, category_id, image_url]
+      "INSERT INTO products (name, price, description, category_id, image_url) VALUES ($1, $2, $3, $4, $5)",
+      [name, price, description, category_id, image_url]
     );
 
+    // Reload page with success message
     const categories = await pool.query("SELECT * FROM categories ORDER BY name ASC");
-    res.render("admin/add-product", { categories: categories.rows, error: null, success: "Product added successfully!" });
+    res.render("admin/add-product", {
+      categories: categories.rows,
+      error: null,
+      success: "Product added successfully!"
+    });
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error.");
   }
 });
+
 
 // Edit products
 app.get("/admin/edit/:id", ensureAdmin, async (req, res) => {
