@@ -51,6 +51,12 @@ async function initializeDatabase() {
 
         console.log("All tables checked/created");
 
+        await pool.query(`
+            ALTER TABLE products
+            ADD COLUMN IF NOT EXISTS image_base64 TEXT,
+            ADD COLUMN IF NOT EXISTS image_mimetype VARCHAR(100)
+        `);
+
         // Create session index if it doesn't exist
         try {
             await pool.query(`

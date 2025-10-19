@@ -27,7 +27,15 @@
     <tbody>
       <% products.forEach(p => { %>
         <tr>
-          <td><img src="<%= p.image_url %>" alt="<%= p.name %>" width="50"></td>
+          <td>
+            <% if (p.image_base64) { %>
+              <img src="data:<%= p.image_mimetype %>;base64,<%= p.image_base64 %>" alt="<%= p.name %>" width="50">
+            <% } else if (p.image_url) { %>
+               <img src="<%= p.image_url %>" alt="<%= p.name %>" width="50">
+            <% } else { %>
+              <img src="/images/placeholder.jpg" alt="No image" width="50">
+            <% } %>
+          </td>
           <td><%= p.name %></td>
           <td><%= p.price %></td>
           <td><%= p.category_name %></td>
