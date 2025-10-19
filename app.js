@@ -519,13 +519,14 @@ app.post("/admin/add-product", ensureAdmin, upload.single("image"), async (req, 
       });
     }
 
-    // Set image URL path
-    const image_url = imageFile ? `/uploads/${imageFile.filename}` : null;
+    // Convert image to Base64 for database storage (I did this because of image display on render)
+    const image_base64 = imageFile.buffer.toString("base64");
+    const image_mimetype = imageFile.mimetype;
 
-    // Insert product into DB with description
+    // Insert product with Base64 image
     await pool.query(
-      "INSERT INTO products (name, price, description, category_id, image_url) VALUES ($1, $2, $3, $4, $5)",
-      [name, price, description, category_id, image_url]
+      "INSERT INTO products (name, price, description, category_id, image_base64, image_mimetype) VALUES ($1, $2, $3, $4, $5, $6)",
+      [name, price, description, category_id, image_base64, image_mimetype]
     );
 
     // Reload page with success message
