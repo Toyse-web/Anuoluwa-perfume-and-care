@@ -101,6 +101,10 @@ async function addExactData() {
             ('Perfume', 'perfume'),
             ('Body Cream', 'body-cream'),
             ('Hair Cream', 'hair-cream');
+            ('Hair accessories', 'hair bands and hair clips'),
+            ('Gift packages', 'gift packages'),
+            ('Girly & Boyly accessories', 'accessories'),
+            ('Facial masks', 'facial masks');
         `);
 
         // Add products
