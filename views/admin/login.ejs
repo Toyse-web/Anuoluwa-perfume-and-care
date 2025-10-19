@@ -1,22 +1,95 @@
 <head>
-    <link rel="stylesheet" href="/css/admin-style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mercy's Collection</title>
+  <link rel="stylesheet" href="/css/admin-style.css">
 </head>
+<div class="full-admin-container">
 <div class="admin-login-wrapper">
   <div class="login-container">
     <h2>Admin Login</h2>
 
     <% if (error) { %>
-      <p class="alert alert-error"><%= error %></p>
+      <div class="alert alert-error">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+        <%= error %>
+      </div>
     <% } %>
 
-    <form action="/admin/login" method="POST" class="admin-login-form">
+    <form action="/admin/login" method="POST" class="admin-login-form" id="loginForm">
       <div class="form-group">
         <input type="text" name="username" placeholder="Username" required>
       </div>
       <div class="form-group">
-        <input type="password" name="password" placeholder="Password" required>
+        <div class="password-wrapper">
+          <input type="password" name="password" id="password" placeholder="Password" required>
+          <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">
+            <!-- Eye visibility -->
+          <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+
+          <!-- Hidden -->
+          <svg class="eye-slash" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          </svg>
+          </button>
+        </div>
       </div>
+
       <button type="submit" class="btn-login">Login</button>
     </form>
   </div>
 </div>
+</div>
+
+<script>
+  // password toggle functionality
+  const togglePass = document.getElementById("togglePassword");
+  const passInput = document.getElementById("password");
+
+  togglePass.addEventListener("click", function() {
+    // Toggle password visibility
+    const type = passInput.getAttribute("type") === "password" ? "text" : "password";
+    passInput.setAttribute("type", type);
+
+    // Toggle button active state (swaps icons)
+    this.classList.toggle("active");
+
+    // Update aria-label for accessibility
+    const isVisible = type === "text";
+    this.setAttribute("aria-label", isVisible ? "Hide password" : "Show password");
+  });
+
+  // Add loading state to login button
+  document.getElementById("loginForm").addEventListener("submit", function(e) {
+    const btn = document.getElementById("loginBtn");
+    const btntext = btn.querySelector(".btn-text");
+
+    btn.disabled = true;
+    btnText.textContent = "Logging in...";
+    btn.classList.add("loading");
+  });
+
+  // Add focus effects
+  const inputs = document.querySelectorAll("input");
+  inputs.forEach(input => {
+    input.addEventListener("focus", function() {
+      this.parentElement.classList.add("focused");
+    });
+
+    input.addEventListener("blur", function() {
+      if (!this.value) {
+        this.parentElement.classList.remove("focused");
+      }
+    });
+  });
+</script>
+
+<%- include("../partials/footer") %>
