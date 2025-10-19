@@ -28,7 +28,13 @@
         %>
           <tr>
             <td style="text-align:left;">
-              <img src="/images/<%= item.image_url %>" alt="<%= item.name %>" style="width:60px;height:60px;object-fit:cover;border-radius:6px;margin-right:8px;vertical-align:middle;">
+              <% if (item.image_base64) { %>
+                <img src="data:<%= item.image_mimetype %>;base64,<%= item.image_base64 %>" alt="<%= item.name %>">
+              <% } else if (item.image_url) { %>
+                 <img src="<%= item.image_url %>" alt="<%= item.name %>">
+              <% } else { %>
+                <img src="/images/placeholder.jpg" alt="No image available">
+              <% } %>
               <span><%= item.name %></span>
             </td>
             <td>₦<%= price.toFixed(2) %></td>

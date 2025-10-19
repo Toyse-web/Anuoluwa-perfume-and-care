@@ -8,7 +8,14 @@
     <div class="product-grid">
       <% productsByCategory[category].forEach(product => { %>
         <div class="product-card">
-          <img src="<%= product.image_url %>" alt="<%= product.name %>">
+          <% if (product.image_base64) { %>
+            <img src="data:<%= product.image_mimetype %>;base64,<%= product.image_base64 %>" alt="<%= product.name %>">
+          <% } else if (product.image_url) { %>
+            <img src="<%= product.image_url %>" alt="<%= product.name %>">
+          <% } else { %>
+             <img src="/images/placeholder.jpg" alt="No image available">
+          <% } %>
+          
 
           <h3><%= product.name %></h3>
           <p><%= product.excerpt %></p>

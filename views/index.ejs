@@ -11,7 +11,15 @@
           <% productsByCategory[cat.id].forEach(p => { %>
             <article class="product-card">
               <div class="product-image">
-                <img src="<%= p.image_url.startsWith('/uploads/') ? p.image_url : '/uploads/' + p.image_url %>" alt="<%= p.name %>">
+                <% if (p.image_base64) { %>
+                  <!-- Use Base64 image -->
+                   <img src="data:<%= p.image_mimetype %>;base64,<%= p.image_base64 %>" alt="<%= p.name %>">
+                <% } else if (p.image_url) { %>
+                  <!-- Fallback to URL image -->
+                   <img src="<%= p.image_url.startsWith('/uploads/') ? p.image_url : '/uploads/' + p.image_url %>" alt="<%= p.name %>">
+                <% } else { %>
+                  <img src="/images/placeholder.jpg" alt="No image available">
+                <% } %>
               </div>
               <div class="product-info">
                 <h3><%= p.name %></h3>
