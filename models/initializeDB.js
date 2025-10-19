@@ -105,6 +105,7 @@ async function addExactData() {
             ('Gift packages', 'gift packages'),
             ('Girly & Boyly accessories', 'accessories'),
             ('Facial masks', 'facial masks');
+            ON CONFLICT (slug) DO NOTHING;
         `);
 
         // Add products
