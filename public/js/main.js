@@ -7,6 +7,8 @@ document.addEventListener("click", (e) => {
 });
 
 // THIS WORKS FOR BOTH THE ADMIN AND USERS LOGIN
+
+
  // password toggle functionality
   const togglePass = document.getElementById("togglePassword");
   const passInput = document.getElementById("password");
@@ -22,4 +24,30 @@ document.addEventListener("click", (e) => {
     // Update aria-label for accessibility
     const isVisible = type === "text";
     this.setAttribute("aria-label", isVisible ? "Hide password" : "Show password");
+  });
+
+   // This is for loading state to login button
+  document.getElementById("loginForm").addEventListener("submit", function(e) {
+    const btn = document.getElementById("loginBtn");
+    const btntext = btn.querySelector(".btn-text");
+    const spinner = btn.querySelector(".spinner");
+
+    btn.disabled = true;
+    btn.classList.add("loading");
+    btntext.textContent = "Logging in...";
+    spinner.classList.remove("hidden");
+  });
+
+  // Add focus effects
+  const inputs = document.querySelectorAll("input");
+  inputs.forEach(input => {
+    input.addEventListener("focus", function() {
+      this.parentElement.classList.add("focused");
+    });
+
+    input.addEventListener("blur", function() {
+      if (!this.value) {
+        this.parentElement.classList.remove("focused");
+      }
+    });
   });

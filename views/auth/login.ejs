@@ -20,7 +20,7 @@
             <div class="alert alert-error"><%= error %></div>
         <% } %>
 
-        <form action="/login" method="POST" class="auth-form">
+        <form action="/login" method="POST" class="auth-form" id="loginForm">
             <div class="input-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required placeholder="Enter your email">
@@ -44,7 +44,10 @@
           </button>
             </div>
 
-            <button type="submit" class="btn-auth">Login</button>
+            <button type="submit" class="btn-auth" id="loginBtn">
+                <span class="btn-text">Login</span>
+                <span class="spinner hide"></span>
+            </button>
         </form>
 
         <p class="auth-footer">

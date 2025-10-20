@@ -253,3 +253,43 @@
 .toggle-password.active .eye-slash {
   display: block;
 }
+
+/* loading animation */
+
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  -webkit-animation: spin 1s ease-in-out infinite;
+  margin-left: -6em;
+  vertical-align: middle;
+}
+
+.spinner.hide {
+  display: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@-webkit-keyframes spin {
+  to {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+/* Button loading state */
+.btn-auth.loading .btn-text {
+  visibility: hidden;
+}
+
+.btn-auth.loading .spinner {
+  display: inline-block;
+}
