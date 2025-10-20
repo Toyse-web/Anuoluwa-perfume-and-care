@@ -43,38 +43,26 @@
         </div>
       </div>
 
-      <button type="submit" class="btn-login">Login</button>
+      <button type="submit" class="btn-login" id="loginBtn">
+        <span class="btn-text">Login</span>
+        <span class="spinner hide"></span>
+      </button>
     </form>
   </div>
 </div>
 </div>
 
 <script>
-  // password toggle functionality
-  const togglePass = document.getElementById("togglePassword");
-  const passInput = document.getElementById("password");
-
-  togglePass.addEventListener("click", function() {
-    // Toggle password visibility
-    const type = passInput.getAttribute("type") === "password" ? "text" : "password";
-    passInput.setAttribute("type", type);
-
-    // Toggle button active state (swaps icons)
-    this.classList.toggle("active");
-
-    // Update aria-label for accessibility
-    const isVisible = type === "text";
-    this.setAttribute("aria-label", isVisible ? "Hide password" : "Show password");
-  });
-
-  // Add loading state to login button
+  // This is for loading state to login button
   document.getElementById("loginForm").addEventListener("submit", function(e) {
     const btn = document.getElementById("loginBtn");
     const btntext = btn.querySelector(".btn-text");
+    const spinner = btn.querySelector(".spinner");
 
     btn.disabled = true;
-    btnText.textContent = "Logging in...";
     btn.classList.add("loading");
+    btntext.textContent = "Logging in...";
+    spinner.classList.remove("hidden");
   });
 
   // Add focus effects
