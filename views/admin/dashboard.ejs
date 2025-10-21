@@ -29,9 +29,13 @@
         <tr>
           <td>
             <% if (p.image_base64) { %>
-              <img src="data:<%= p.image_mimetype %>;base64,<%= p.image_base64 %>" alt="<%= p.name %>" width="50">
+            <!-- For admin-uploaded images with base64 storage -->
+            <img src="data:<%= p.image_mimetype %>;base64,<%= p.image_base64 %>" alt="<%= p.name %>" width="50">
             <% } else if (p.image_url) { %>
-               <img src="<%= p.image_url %>" alt="<%= p.name %>" width="50">
+            <!-- For ALL URL-based images - handle both cases -->
+            <img src="<%= p.image_url.startsWith('/') ? p.image_url : '/images/' + p.image_url %>" 
+                alt="<%= p.name %>" width="50"
+                onerror="this.src='/images/placeholder.jpg'">
             <% } else { %>
               <img src="/images/placeholder.jpg" alt="No image" width="50">
             <% } %>

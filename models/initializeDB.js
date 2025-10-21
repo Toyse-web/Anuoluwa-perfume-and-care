@@ -47,6 +47,35 @@ async function initializeDatabase() {
                 password_hash TEXT NOT NULL,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS orders (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                user_name VARCHAR(255) NOT NULL,
+                user_email VARCHAR(255) NOT NULL,
+                user_phone VARCHAR(50),
+                address TEXT NOT NULL,
+                city VARCHAR(100),
+                state VARCHAR(100),
+                postal_code VARCHAR(20),
+                payment_method VARCHAR(50) DEFAULT 'cash_on_delivery',
+                subtotal DECIMAL(10,2) NOT NULL,
+                shipping DECIMAL(10,2) DEFAULT 0,
+                total DECIMAL(10,2) NOT NULL,
+                status VARCHAR(50) DEFAULT 'pending',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS order_items (
+                id SERIAL PRIMARY KEY,
+                order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+                product_id INTEGER,
+                product_name VARCHAR(255) NOT NULL,
+                product_price DECIMAL(10,2) NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 1,
+                total_price DECIMAL(10,2) NOT NULL
+            );
         `);
 
         console.log("All tables checked/created");
@@ -100,12 +129,11 @@ async function addExactData() {
             INSERT INTO categories (name, slug) VALUES 
             ('Perfume', 'perfume'),
             ('Body Cream', 'body-cream'),
-            ('Hair Cream', 'hair-cream');
+            ('Hair Cream', 'hair-cream'),
             ('Hair accessories', 'hair bands and hair clips'),
             ('Gift packages', 'gift packages'),
             ('Girly & Boyly accessories', 'accessories'),
             ('Facial masks', 'facial masks');
-            ON CONFLICT (slug) DO NOTHING;
         `);
 
         // Add products
@@ -140,11 +168,40 @@ async function addAdminUsers() {
         const admin1Hash = await bcrypt.hash("Toyse2025", SALT_ROUNDS);
         const admin2Hash = await bcrypt.hash("Anuoluwa2025", SALT_ROUNDS);
 
-        // Update admin users
-        await pool.query(`
-            UPDATE admins SET password_hash = $1 WHERE username = 'Toysedevs';
-            UPDATE admins SET password_hash = $2 WHERE username = 'Anuoluwa';
-        `, [admin1Hash, admin2Hash]);
+        const admin1 = await pool.query("SELECT id FROM admins WHERE username = $1", ["Toysedevs"]);
+        const admin2 = await pool.query("SELECT id FROM admins WHERE username = $1", ["Anuoluwa"]);
+
+        if (admin1.rows.length === 0) {
+            // Insert if dosen't exist
+            await pool.query(
+                `INSERT INTO admins (username, email, password_hash) VALUES ($1, $2, $3)`,
+                ["Toysedevs", "olayonwatoyib05@gmail.com", admin1Hash]
+            );
+            console.log("Created admin user: Toysedevs");
+        } else {
+            // update if exists
+            await pool.query(
+                "UPDATE admins SET password_hash = $1 WHERE username = $2",
+                [admin1Hash, "Toysedevs"]
+            );
+            console.log("Updated admin user: Toysedevs");
+        }
+
+        if (admin2.rows.length === 0) {
+            // Insert if dosen't exist
+            await pool.query(
+                `INSERT INTO admins (username, email, password_hash) VALUES ($1, $2, $3)`,
+                ["Anuoluwa", "anuoluwapoadejare3@gmail.com", admin2Hash]
+            );
+            console.log("Created admin user: Anuoluwa");
+        } else {
+            // update if exists
+            await pool.query(
+                "UPDATE admins SET password_hash = $1 WHERE username = $2",
+                [admin2Hash, "Anuoluwa"]
+            );
+            console.log("Updated admin user: Anuoluwa");
+        }
 
         console.log("Admin users Updated!");
         console.log("New admin Credentials:");

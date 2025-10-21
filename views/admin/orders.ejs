@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders Management - Admin</title>
+    <link rel="stylesheet" href="/css/admin-orders.css">
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>Orders Management</h1>
+            <nav class="admin-nav">
+                <a href="/admin">Dashboard</a>
+                <a href="/admin/add-product">Add product</a>
+                <a href="/admin/orders" class="active">Orders</a>
+                <a href="/admin/logout">Logout</a>
+            </nav>
+        </div>
+
+        <% if (error) { %>
+            <div class="alert alert-error"><%= error %></div>
+        <% } %>
+
+        <div class="orders-container">
+            <% if (orders.length === 0) { %>
+                <div class="empty-state">
+                    <h3>No orders yet</h3>
+                    <p>When customers place orders, they will appear here.</p>
+                </div>
+            <% } else { %>
+                <div class="orders-grid">
+                    <% orders.forEach(order => { %>
+                        <div class="order-card" data-status="<%= order.status %>">
+                            <div class="order-header">
+                                <div class="order-id">Order #<%= order.id %></div>
+                                <div class="order-status status-<%= order.status %>">
+                                    <%= order.status.charAt(0).toUpperCase() + order.status.slice(1) %>
+                                </div>
+                            </div>
+
+                            <div class="order-customer">
+                                <strong><%= order.user_name %></strong>
+                                <div class="customer-email"><%= order.user_email %></div>
+                            </div>
+
+                            <div class="order-address">
+                                <div class="address-text"><%= order.address %></div>
+
+                                <% if (order.city || order.state) { %>
+                                    <div class="address-location">
+                                        <%= [order.city, order.state].filter(Boolean).join(', ') %>
+                                        <%= order.postal_code ? ` - ${order.postal_code}` : '' %>
+                                    </div>
+                                <% } %>
+                            </div>
+
+                            <div class="order-meta">
+                                <div class="order-total">₦<%= order.total.toLocaleString() %></div>
+                                <div class="order-date">
+                                    <%= new Date(order.created_at).toLocaleString() %>
+                                </div>
+                                <div class="order-items">
+                                    <%= order.item_count %> item<%= order.item_count !== 1 ? 's' : '' %>
+                                </div>
+                            </div>
+
+                            <div class="order-actions">
+                                <a href="/admin/orders/<%= order.id %>" class="btn-view">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <script>
+        console.log("Orders page loaded");
+    </script>
+</body>
+</html>

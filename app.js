@@ -279,9 +279,8 @@ app.get("/checkout", ensureAuthenticated, (req, res) => {
     res.render("checkout", {cart: cart, subtotal: subtotal});
 });
 
-app.post("/checkout", ensureAuthenticated, (req, res) => {
+app.post("/checkout", ensureAuthenticated, async (req, res) => {
     try {
-        console.log("=== CHECKOUT PROCESS STARTED ===");
          const cart = getCart(req);
          console.log("Cart items:", cart.length);
          console.log("cart contents:", cart);
@@ -295,7 +294,6 @@ app.post("/checkout", ensureAuthenticated, (req, res) => {
             postalCode, 
             paymentMethod
         } = req.body;
-        console.log("Form data received:", req.body);
 
         // check if form data is missing
         if (!fullName || !email || !phone) {
@@ -316,32 +314,34 @@ app.post("/checkout", ensureAuthenticated, (req, res) => {
     const shipping = 1000;
     const total = subtotal + shipping;
 
-    // Save order (for now, just log or save in JSON file)
-    const order = {
-        customer: {fullName, email, phone, address, city, state, postalCode},
-        paymentMethod,
-        items: cart,
-        subtotal,
-        shipping,
-        total,
-        date: new Date()
-    };
+    // Insert order
+    const orderResult = await pool.query(
+        `INSERT INTO orders (
+            user_id, user_name, user_email, user_phone, address, city, state, postal_code,
+            payment_method, subtotal, shipping, total
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+         [req.session.user?.id, fullName, email, phone, address, city, state, postalCode,
+            paymentMethod, subtotal, shipping, total]
+    );
 
-    // TODO: save order to JSON/pool
-    console.log("New Order:", order);
+    const orderId = orderResult.rows[0].id;
 
+    // Insert order items
+    for (const item of cart) {
+        await pool.query(
+            `INSERT INTO order_items (order_id, product_id, product_name, product_price, quantity, total_price)
+            VALUES ($1, $2, $3, $4, $5, $6)`,
+            [orderId, item.id, item.name, item.price, item.quantity, item.price * item.quantity]
+        );
+    }
     // Clear cart after order
     saveCart(req, res, []); // Using savecart to clear both session and cookie
     console.log("Cart cleared");
 
     // Save session before redirecting
-    req.session.save((err) => {
-        if (err) {
-            console.error("Error saving session:", err);
-        }
-        console.log("Session saved, rendering order-success");
-        res.render("order-success", { order });
-    });
+    saveCart(req, res, []);
+        res.render("order-success", { order: {id: orderId, total, customer: {fullName, email}} });
+
     } catch (err) {
         console.error("Checkout error:", err);
         res.status(500).send("Checkout failed");
@@ -485,6 +485,7 @@ app.get("/admin", ensureAdmin, async (req, res) => {
             LEFT JOIN categories c ON p.category_id = c.id
             ORDER BY p.id DESC
         `);
+        
         console.log("Rendering admin dashboard with", products.rows.length, "products");
 
         res.render("admin/dashboard", {
@@ -580,6 +581,104 @@ app.post("/admin/delete/:id", ensureAdmin, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).render("error", {message: "Failed to delete product", error: err});
+    }
+});
+
+// Admin Orders Management Routes
+
+// View all orders
+app.get("/admin/orders", ensureAdmin, async (req, res) => {
+    try {
+        const orders = await pool.query(`
+            SELECT o.*,
+            COUNT(oi.id) as item_count,
+            STRING_AGG(oi.product_name, ', ') as product_names
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        GROUP BY o.id
+        ORDER BY o.created_at DESC
+        `);
+        res.render("admin/orders", {
+            admin: req.session.admin,
+            orders: orders.rows,
+            error: null
+        });
+    } catch (err) {
+        console.error("Admin orders error:", err);
+        res.status(500).render("admin/orders", {
+            admin: req.session.admin,
+            orders: [],
+            error: "Failed to load orders"
+        });
+    }
+});
+
+// View single order details
+app.get("/admin/orders/:id", ensureAdmin, async (req, res) => {
+    try {
+        const orderId = req.params.id;
+
+        // get order details
+        const orderResult = await pool.query(`
+            SELECT * FROM orders WHERE id = $1
+        `, [orderId]);
+
+        if (orderResult.rows.length === 0) {
+            return res.status(404).render("admin/order-details", {
+                admin: req.session.admin,
+                order: null,
+                orderItems: [],
+                error: "Order not found"
+            });
+        }
+        const order = orderResult.rows[0];
+
+        // Get order items
+        const itemsResult = await pool.query(`
+            SELECT oi.*, p.image_url, p.image_base64, p.image_mimetype
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = $1
+            ORDER BY oi.id
+        ` [orderId]);
+
+        res.render("admin/order-details", {
+            admin: req.session.admin,
+            order: order,
+            orderItems: itemsResult.rows,
+            error: null
+        });
+    } catch (err) {
+        console.error("Order details error:", err);
+        res.status(500).render("admin/order-details", {
+            admin: req.session.admin,
+            order: null,
+            orderItems: [],
+            error: "Failed to load order details"
+        });
+    }
+});
+
+// Update order status
+app.post("/admin/orders/:id/status", ensureAdmin, async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        const {status} = req.body;
+
+        const validStatuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({error: "Invalid status"});
+        }
+
+        await pool.query(
+            "UPDATE orders SET status = $1 WHERE id = $2",
+            [status, orderId]
+        );
+
+        res.json({success: true, message: "Order status updated successfully"});
+    } catch (err) {
+        console.error("Update order status error:", err);
+        res.status(500).json({error: "Failed to update order status"});
     }
 });
 

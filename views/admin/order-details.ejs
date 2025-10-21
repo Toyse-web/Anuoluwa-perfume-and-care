@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order #<%= order ? order.id : 'Not Found' %> - Admin</title>
+    <link rel="stylesheet" href="/css/admin-orders.css">
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>
+                <a href="/admin/orders" class="back-link">←</a>
+                Order Details
+            </h1>
+            <nav class="admin-nav">
+                <a href="/admin">Dashboard</a>
+                <a href="/admin/add-product">Add Product</a>
+                <a href="/admin/orders" class="active">Orders</a>
+                <a href="/admin/logout">Logout</a>
+            </nav>
+        </div>
+
+        <% if (error) { %>
+            <div class="alert alert-error"><%= error %></div>
+        <% } else if (!order) { %>
+            <div class="alert alert-error">Order not found</div>
+        <% } else { %>
+            <div class="order-details-container">
+                <!-- Order Header -->
+                 <div class="order-header-details">
+                    <div class="order-title">
+                        <h2>Order #<%= order.id %></h2>
+                        <div class="order-status-large status-<%= order.status %>">
+                            <%= order.status.charAt(0).toUpperCase() + order.status.slice(1) %>
+                        </div>
+                    </div>
+                    <div class="order-date">
+                        Placed on <%= new Date(order.created_at).toLocaleString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        }) %>
+                    </div>
+                 </div>
+
+                 <!-- Customer Information -->
+                  <div class="details-section">
+                    <h3>Customer Information</h3>
+                    <div class="customer-info">
+                        <div class="info-row">
+                            <strong>Name:</strong>
+                            <span><%= order.user_name %></span>
+                        </div>
+                        <div class="info-row">
+                            <strong>Email:</strong>
+                            <span><%= order.user_email %></span>
+                        </div>
+                        <% if (order.user_phone) { %>
+                            <div class="info-row">
+                                <strong>Phone:</strong>
+                                <span><%= order.user_phone %></span>
+                            </div>
+                        <% } %>
+                    </div>
+                  </div>
+
+                  <!-- Shipping Address -->
+                   <div class="details-section">
+                    <h3>Shipping Address</h3>
+                    <div class="address-info">
+                        <div class="address-text"><%= order.address %></div>
+                        <% if (order.city || order.state) { %>
+                            <div class="address-location">
+                                <%= [order.city, order.state].filter(Boolean).join(', ') %>
+                                <%= order.postal_code ? ` - ${order.postal_code}` : '' %>
+                            </div>
+                        <% } %>
+                    </div>
+                   </div>
+
+                   <!-- Order Items -->
+                    <div class="details-section">
+                        <h3>Order Items (<%= orderItems.length %>)</h3>
+                        <div class="order-items-list">
+                            <% orderItems.forEach(item => { %>
+                                <div class="order-item">
+                                    <div class="item-image">
+                                        <% if (item.image_base64) { %>
+                                            <img src="data:<%= item.image_mimetype %>;base64,<%= item.image_base64 %>" alt="<%= item.product_name %>">
+                                        <% } else if (item.image_url) { %>
+                                            <img src="<%= item.image_url %>" alt="<%= item.product_name %>">
+                                        <% } else { %>
+                                            <div class="image-placeholder">No Image</div>
+                                        <% } %>
+                                    </div>
+                                    <div class="item-details">
+                                        <div class="item-name"><%= item.product_name %></div>
+                                        <div class="item-price">₦<%= item.product_price.toLocaleString() %></div>
+                                    </div>
+                                    <div class="item-quantity">
+                                        Qty: <%= item.quantity %>
+                                    </div>
+                                    <div class="item-total">
+                                        ₦<%= item.total_price.toLocaleString() %>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+                    </div>
+
+                    <!-- Order Summary -->
+                     <div class="details-section">
+                        <h3>Order Summary</h3>
+                        <div class="order-summary">
+                            <div class="summary-row">
+                                <span>Subtotal:</span>
+                                <span>>₦<%= order.subtotal.toLocaleString() %></span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Shipping:</span>
+                                <span>₦<%= order.shipping.toLocaleString() %></span>
+                            </div>
+                            <div class="summary-row total">
+                                <span>Total:</span>
+                                <span>₦<%= order.total.toLocaleString() %></span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Payment Method:</span>
+                                <span><%= order.payment_method ? order.payment_method.replace(/_/g, ' ').toUpperCase() : 'Cash on Delivery' %></span>
+                            </div>
+                        </div>
+                     </div>
+
+                     <!-- Status Update -->
+                      <div class="details-section">
+                        <h3>Update Order Status</h3>
+                        <form class="status-update-form" data-order-id="<%= order.id %>">
+                            <select name="status" class="status-select">
+                                <option value="pending" <%= order.status === 'pending' ? 'selected' : '' %>>Pending</option>
+                                <option value="processing" <%= order.status === 'processing' ? 'selected' : '' %>>Processing</option>
+                                <option value="shipped" <%= order.status === 'shipped' ? 'selected' : '' %>>Shipped</option>
+                                <option value="delivered" <%= order.status === 'delivered' ? 'selected' : '' %>>Delivered</option>
+                                <option value="cancelled" <%= order.status === 'cancelled' ? 'selected' : '' %>>Cancelled</option>
+                            </select>
+                            <button type="submit" class="btn-update">Update Status</button>
+                        </form>
+                        <div id="statusMessage" class="status-message"></div>
+                      </div>
+            </div>
+        <% } %>
+    </div>
+
+    <script>
+        // Status update functionality
+        document.querySelector(".status-update-form")?.addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const form = this;
+            const orderId = form.dataset.orderId;
+            const status = form.status.value;
+            const button = form.querySelector(".btn-update");
+            const messageDiv = document.getElementById("statusMessage");
+
+            button.disabled = true;
+            button.textContent = "Updating...";
+            messageDiv.textContent = '';
+            messageDiv.className = "status-message";
+
+            try {
+                const response = await fetch(`/admin/orders/${orderId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': "application/json",
+                    },
+                    body: JSON.stringify({status})
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    messageDiv.textContent = "Status updated successfully!";
+                    messageDiv.className = "status-message success'";
+
+                    // Update the status display
+                    const statusElement = document.querySelector(".order-status-large");
+                    statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+                    statusElement.className = `order-status-large status-${status}`;
+
+                    // Reload the page after 2 seconds to show updated status
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                messageDiv.textContent = "Error: " + error.message;
+                messageDiv.className = "status-message error"; 
+            } finally {
+                button.disabled = false;
+                button.textContent = "Update Status";
+            }
+        });
+    </script>
+</body>
+</html>
