@@ -3,7 +3,8 @@ const {Pool} = require("pg");
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL || "postgres://postgres:Jeanie1234*@localhost:5432/Anuoluwa-Store",
-    ssl: false
+    ssl: false,
+    family: 4
 });
 
 // Test connection
